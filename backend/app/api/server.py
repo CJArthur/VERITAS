@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from backend.app.settings import SETTINGS
+from app.settings import SETTINGS
 
 
 app = FastAPI(
@@ -28,4 +28,4 @@ app.add_middleware(
 
 @app.get("/health")
 async def healthcheck():
-    return {"service": "auth", "status": "ok", "database": "connected"}
+    return {"service": "vertias-api", "status": "ok", "database": "connected"}

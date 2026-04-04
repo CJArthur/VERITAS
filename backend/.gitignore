@@ -10,5 +10,4 @@ dist/
 *.egg-info/
 .vscode/
 logs/
-uv.lock
 ignore_test/

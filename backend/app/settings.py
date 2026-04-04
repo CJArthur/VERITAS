@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # --- Redis Database configuration --- #
     UPSTASH_REDIS_URL: SecretStr
-    UPSTASH_REDIS_TOKEN: SecretStr
+    UPSTASH_REDIS_TOKEN: SecretStr | None = None
 
     # --- Mail Verification Configuration --- #
     #! Port: 587 - for TLS, 465 - for SSL(Recommend use TLS)

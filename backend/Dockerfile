@@ -18,7 +18,7 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock /app/
 
-RUN uv sync --locked
+RUN uv sync --no-dev
 
 COPY . /app
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

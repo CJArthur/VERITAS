@@ -92,10 +92,9 @@ source .venv/bin/activate        # macOS / Linux
 # .venv\Scripts\activate         # Windows
 
 # Установить зависимости
-pip install fastapi "uvicorn[standard]" sqlalchemy psycopg2-binary alembic \
-    pydantic "pydantic-settings" python-dotenv "python-jose[cryptography]" \
-    "passlib[argon2]" python-multipart "qrcode[pil]" redis httpx \
-    openpyxl email-validator fastapi-mail cryptography reportlab
+pip install -r requirements.txt
+# или через uv (рекомендуется):
+# pip install uv && uv sync --no-dev
 
 # Настроить окружение
 cp example.env .env
@@ -220,15 +219,20 @@ API_URL=https://api.your-domain.com
 
 `API_URL` используется для server-side запросов (SSR) — должен быть доступен с сервера, где запущен Next.js.
 
-### Docker Compose (только БД и Redis)
+### Docker Compose (API + БД + Redis)
 
-В репозитории есть `docker-compose.yml` для локального запуска PostgreSQL и Redis:
+`backend/docker-compose.yml` поднимает весь стек: FastAPI, PostgreSQL 15 и Redis одной командой.
 
 ```bash
-docker-compose up -d
+cd backend
+cp example.env .env
+# Отредактировать .env: MAIL_*, SECRET_KEY, BOOTSTRAP_SUPER_ADMIN_EMAIL
+docker compose up -d --build
 ```
 
-Backend и frontend запускаются отдельно (см. выше).
+API будет доступен на порту `FASTAPI_PORT` (по умолчанию 8200). Миграции применяются автоматически при старте контейнера.
+
+Frontend запускается отдельно (см. выше).
 
 ---
 

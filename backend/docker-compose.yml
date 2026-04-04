@@ -4,22 +4,24 @@ services:
     build: .
     container_name: fastapi-VERITAS-api
     ports:
-      - "${FASTAPI_PORT}:8000"
+      - "${FASTAPI_PORT:-8200}:8000"
     dns:
       - 8.8.8.8
       - 1.1.1.1
     restart: always
-
     env_file:
       - .env
-
+    environment:
+      DB_HOST: db
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  # POSTGRESQL DB
+  # PostgreSQL
   db:
-    image: postgres:latest
+    image: postgres:15
     container_name: postgres-VERITAS-db
     ports:
       - "5432:5432"
@@ -28,20 +30,28 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-vertias_db}
-
+      POSTGRES_DB: ${DB_NAME:-veritas_db}
     volumes:
-      - postgres_data:/var/lib/postgresql
-      
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-vertias_db} -h localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-veritas_db} -h localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
-
     restart: always
 
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: redis-VERITAS
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: always
 
 volumes:
   postgres_data:
-  

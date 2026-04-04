@@ -13,7 +13,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
         httponly=True,
         max_age=900,  # 15 minutes
         secure=SECURE_COOKIES,
-        samesite="lax"
+        samesite="none" if SECURE_COOKIES else "lax"
     )
 
     # 2. Refresh Token
@@ -23,5 +23,5 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
         httponly=True,
         max_age=30 * 24 * 60 * 60,  # 30 days
         secure=SECURE_COOKIES,
-        samesite="lax"
+        samesite="none" if SECURE_COOKIES else "lax"
     )

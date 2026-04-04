@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, constr, Field
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 
@@ -145,3 +145,77 @@ class PublicDiplomaView(BaseModel):
     status: str
     signature_valid: bool
     employer_link_valid_until: Optional[str] = None
+
+
+class SubjectOut(BaseModel):
+    subject_name: str
+    hours: int
+    credits: int
+    grade: int
+    semester: int
+
+    class Config:
+        from_attributes = True
+
+
+class VerificationLogOut(BaseModel):
+    verifier_type: str
+    verifier_ip: str
+    verifier_org_name: Optional[str] = None
+    verified_at: str
+    result: str
+
+
+class DiplomaListItem(BaseModel):
+    id: UUID
+    registration_number: str
+    graduate_full_name: str
+    specialty_name: str
+    study_end_year: int
+    status: str
+    certificate_token: UUID
+    student_user_id: Optional[UUID] = None
+    created_at: str
+
+
+class DiplomaDetail(BaseModel):
+    id: UUID
+    registration_number: str
+    serial_number: str
+    graduate_full_name: str
+    specialty_name: str
+    specialty_code: str
+    study_start_year: int
+    study_end_year: int
+    issue_date: str
+    gpa: float
+    status: str
+    revoke_reason: Optional[str] = None
+    certificate_token: UUID
+    data_hash: str
+    signature_valid: bool
+    university_name: str
+    student_user_id: Optional[UUID] = None
+    employer_link_valid_until: Optional[str] = None
+    subjects: List[SubjectOut] = []
+    logs: List[VerificationLogOut] = []
+    created_at: str
+
+
+class UniversityProfilePatch(BaseModel):
+    avatar_url: Optional[str] = None
+    banner_url: Optional[str] = None
+
+
+class UniversityInfo(BaseModel):
+    id: UUID
+    name: str
+    ogrn: str
+    license_number: str
+    accreditation_number: str
+    avatar_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    approval_status: str
+
+    class Config:
+        from_attributes = True

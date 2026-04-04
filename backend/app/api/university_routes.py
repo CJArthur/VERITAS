@@ -4,7 +4,15 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.schemas import ManualDiplomaIn
+from app.api.schemas import (
+    ManualDiplomaIn,
+    DiplomaListItem,
+    DiplomaDetail,
+    SubjectOut,
+    VerificationLogOut,
+    UniversityProfilePatch,
+    UniversityInfo,
+)
 from app.api.services.bulk_diploma_import import import_diplomas_from_upload
 from app.api.services.diploma_ops import create_diploma_minimal, revoke_diploma
 from app.api.services.diploma_crypto import verify_issuer_signature
@@ -109,7 +117,7 @@ def verify_signature(
     _, uni = ctx
     d = (
         db.query(Diploma)
-        .options(joinload(Diploma.university))
+        .options(joinedload(Diploma.university))
         .filter(Diploma.id == diploma_id, Diploma.university_id == uni.id)
         .first()
     )
@@ -117,3 +125,128 @@ def verify_signature(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     ok = verify_issuer_signature(uni.id, d.data_hash, d.issuer_signature)
     return {"signature_valid": ok, "data_hash": d.data_hash}
+
+
+@router.get("/diplomas", response_model=list[DiplomaListItem])
+def list_diplomas(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    ctx: tuple[User, University] = Depends(get_approved_university_staff),
+):
+    _, uni = ctx
+    rows = (
+        db.query(Diploma)
+        .filter(Diploma.university_id == uni.id)
+        .order_by(Diploma.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return [
+        DiplomaListItem(
+            id=d.id,
+            registration_number=d.registration_number,
+            graduate_full_name=d.graduate_full_name,
+            specialty_name=d.specialty_name,
+            study_end_year=d.study_end_year,
+            status=d.status.value,
+            certificate_token=d.certificate_token,
+            student_user_id=d.student_user_id,
+            created_at=d.created_at.isoformat(),
+        )
+        for d in rows
+    ]
+
+
+@router.get("/diplomas/{diploma_id}", response_model=DiplomaDetail)
+def get_diploma_detail(
+    diploma_id: UUID,
+    db: Session = Depends(get_db),
+    ctx: tuple[User, University] = Depends(get_approved_university_staff),
+):
+    _, uni = ctx
+    d = (
+        db.query(Diploma)
+        .options(
+            joinedload(Diploma.subjects),
+            joinedload(Diploma.logs),
+            joinedload(Diploma.university),
+        )
+        .filter(Diploma.id == diploma_id, Diploma.university_id == uni.id)
+        .first()
+    )
+    if not d:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    sig_ok = False
+    if d.issuer_signature:
+        sig_ok = verify_issuer_signature(uni.id, d.data_hash, d.issuer_signature)
+
+    return DiplomaDetail(
+        id=d.id,
+        registration_number=d.registration_number,
+        serial_number=d.serial_number,
+        graduate_full_name=d.graduate_full_name,
+        specialty_name=d.specialty_name,
+        specialty_code=d.specialty_code,
+        study_start_year=d.study_start_year,
+        study_end_year=d.study_end_year,
+        issue_date=d.issue_date.isoformat(),
+        gpa=float(d.gpa),
+        status=d.status.value,
+        revoke_reason=d.revoke_reason,
+        certificate_token=d.certificate_token,
+        data_hash=d.data_hash,
+        signature_valid=sig_ok,
+        university_name=d.university.name if d.university else "",
+        student_user_id=d.student_user_id,
+        employer_link_valid_until=(
+            d.employer_link_valid_until.isoformat() if d.employer_link_valid_until else None
+        ),
+        subjects=[
+            SubjectOut(
+                subject_name=s.subject_name,
+                hours=s.hours,
+                credits=s.credits,
+                grade=s.grade,
+                semester=s.semester,
+            )
+            for s in d.subjects
+        ],
+        logs=[
+            VerificationLogOut(
+                verifier_type=lg.verifier_type,
+                verifier_ip=lg.verifier_ip,
+                verifier_org_name=lg.verifier_org_name,
+                verified_at=lg.verified_at.isoformat(),
+                result=lg.result,
+            )
+            for lg in d.logs
+        ],
+        created_at=d.created_at.isoformat(),
+    )
+
+
+@router.get("/profile", response_model=UniversityInfo)
+def get_university_profile(
+    ctx: tuple[User, University] = Depends(get_approved_university_staff),
+):
+    _, uni = ctx
+    return uni
+
+
+@router.patch("/profile")
+def update_university_profile(
+    body: UniversityProfilePatch,
+    db: Session = Depends(get_db),
+    ctx: tuple[User, University] = Depends(get_approved_university_staff),
+):
+    _, uni = ctx
+    if body.avatar_url is not None:
+        uni.avatar_url = body.avatar_url
+    if body.banner_url is not None:
+        uni.banner_url = body.banner_url
+    db.commit()
+    db.refresh(uni)
+    return {"status": "updated", "avatar_url": uni.avatar_url, "banner_url": uni.banner_url}

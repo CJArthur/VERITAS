@@ -15,14 +15,13 @@ def verify_user_email(response: Response, token: str, db: Session):
     # 1. Проверяем токен в Redis
     user_id_str = redis_client.get(f"verification:{token}")
     if not user_id_str:
-        # Если ссылка протухла — редирект на страницу ошибки
-        return RedirectResponse("http://localhost:3000/error?msg=expired")
+        return RedirectResponse(f"{FRONTEND_URL}/login?verified=expired")
 
     # 2. Активируем пользователя
     user_id = UUID(user_id_str)
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
-         return RedirectResponse("http://localhost:3000/error?msg=user_not_found")
+        return RedirectResponse(f"{FRONTEND_URL}/login?verified=not_found")
 
     if not db_user.is_verified:
         db_user.is_verified = True
@@ -44,8 +43,16 @@ def verify_user_email(response: Response, token: str, db: Session):
     # Добавляем токен в SET пользователя
     add_refresh_token_to_user_set(str(db_user.id), refresh_token)
 
-    # 5. СОЗДАЕМ РЕДИРЕКТ С УСТАНОВКОЙ КУК
-    redirect_resp = RedirectResponse(url=FRONTEND_URL, status_code=status.HTTP_302_FOUND)
+    # 5. СОЗДАЕМ РЕДИРЕКТ С УСТАНОВКОЙ КУК — по роли
+    from app.db.models import UserRole
+    if db_user.role == UserRole.super_admin:
+        dest = f"{FRONTEND_URL}/admin"
+    elif db_user.role == UserRole.university_staff:
+        # university_staff должен ждать одобрения, отправляем на login с подсказкой
+        dest = f"{FRONTEND_URL}/login?verified=ok&pending=1"
+    else:
+        dest = f"{FRONTEND_URL}/student"
+    redirect_resp = RedirectResponse(url=dest, status_code=status.HTTP_302_FOUND)
     
     # Устанавливаем Access Token в куки
     redirect_resp.set_cookie(

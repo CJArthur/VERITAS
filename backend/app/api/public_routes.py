@@ -20,7 +20,7 @@ def public_view_diploma(
 ):
     d = (
         db.query(Diploma)
-        .options(joinload(Diploma.university))
+        .options(joinedload(Diploma.university))
         .filter(Diploma.certificate_token == certificate_token)
         .first()
     )

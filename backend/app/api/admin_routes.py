@@ -1,10 +1,13 @@
+import hashlib
+import secrets
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas import RejectUniversityBody
-from app.db.models import University, UniversityApprovalStatus, User
+from app.db.models import EmployerApiKey, University, UniversityApprovalStatus, User
 from app.db.postgres import get_db
 from app.utils.role_deps import require_super_admin
 
@@ -66,3 +69,61 @@ def reject_university(
     uni.rejection_reason = body.reason
     db.commit()
     return {"status": "rejected", "university_id": str(uni.id)}
+
+
+@router.post("/employer-keys", summary="Generate employer API key")
+def create_employer_api_key(
+    org_name: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    raw_key = secrets.token_urlsafe(32)
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    api_key = EmployerApiKey(org_name=org_name, key_hash=key_hash)
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+    # Return raw key ONCE — not stored, cannot be recovered
+    return {
+        "id": str(api_key.id),
+        "org_name": api_key.org_name,
+        "api_key": raw_key,
+        "warning": "Save this key now. It will not be shown again.",
+        "created_at": api_key.created_at.isoformat() if api_key.created_at else None,
+    }
+
+
+@router.get("/employer-keys", summary="List employer API keys")
+def list_employer_api_keys(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    keys = (
+        db.query(EmployerApiKey)
+        .order_by(EmployerApiKey.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": str(k.id),
+            "org_name": k.org_name,
+            "is_active": k.is_active,
+            "created_at": k.created_at.isoformat() if k.created_at else None,
+            "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+        }
+        for k in keys
+    ]
+
+
+@router.delete("/employer-keys/{key_id}", summary="Revoke employer API key")
+def revoke_employer_api_key(
+    key_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    key = db.query(EmployerApiKey).filter(EmployerApiKey.id == key_id).first()
+    if not key:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found")
+    key.is_active = False
+    db.commit()
+    return {"status": "revoked", "org_name": key.org_name}

@@ -70,6 +70,7 @@ class University(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    banner_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
 
     diplomas: Mapped[List["Diploma"]] = relationship(back_populates="university")
     staff_users: Mapped[List["User"]] = relationship(
@@ -191,3 +192,14 @@ class VerificationLog(Base):
     result: Mapped[str] = mapped_column(String)
 
     diploma: Mapped["Diploma"] = relationship(back_populates="logs")
+
+
+class EmployerApiKey(Base):
+    __tablename__ = "employer_api_keys"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    org_name: Mapped[str] = mapped_column(String(255))
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

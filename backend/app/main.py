@@ -11,6 +11,7 @@ from app.api.admin_routes import router as admin_router
 from app.api.university_routes import router as university_router
 from app.api.student_routes import router as student_router
 from app.api.public_routes import router as public_router
+from app.api.employer_routes import router as employer_router
 from app.api.services.login_yandex_service import router as yandex_router
 from app.settings import SETTINGS
 
@@ -40,6 +41,7 @@ app.include_router(admin_router, prefix="/api/v1")
 app.include_router(university_router, prefix="/api/v1")
 app.include_router(student_router, prefix="/api/v1")
 app.include_router(public_router, prefix="/api/v1")
+app.include_router(employer_router, prefix="/api/v1")
 app.include_router(yandex_router, prefix="/api/v1")
 
 # --- Health Check Endpoint --- #

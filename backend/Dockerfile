@@ -21,7 +21,7 @@ COPY pyproject.toml uv.lock /app/
 RUN uv sync --no-dev
 
 COPY . /app
-COPY backend/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

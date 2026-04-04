@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { PlusCircle, GraduationCap, ShieldCheck, Clock, XCircle } from "lucide-react";
+import { PlusCircle, GraduationCap, ShieldCheck, XCircle } from "lucide-react";
 import { apiGet, StudentDiploma } from "@/lib/api";
 import { DiplomaCard } from "@/components/DiplomaCard";
 import { Button } from "@/components/ui/button";

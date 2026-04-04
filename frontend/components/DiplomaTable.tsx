@@ -73,8 +73,8 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
       setAddForm({ graduate_full_name: "", year: new Date().getFullYear(), specialty_name: "", diploma_number: "" });
       const data = await fetch(`${apiUrl}/api/v1/university/diplomas`, { credentials: "include" });
       if (data.ok) setDiplomas(await data.json());
-    } catch (err: any) {
-      setAddError(err.detail ?? "Ошибка добавления");
+    } catch (err: unknown) {
+      setAddError(err instanceof ApiError ? err.detail : "Ошибка добавления");
     } finally {
       setAddLoading(false);
     }

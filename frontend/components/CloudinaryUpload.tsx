@@ -35,8 +35,8 @@ export function CloudinaryUpload({
     try {
       const result = await uploadToCloudinary(file, folder);
       onUploaded(result.secure_url);
-    } catch (err: any) {
-      setError(err.message ?? "Ошибка загрузки");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Ошибка загрузки");
       setPreview(currentUrl ?? null);
     } finally {
       setLoading(false);

@@ -31,6 +31,27 @@
 }
 
 @layer base {
+  /* Scrollbar — Webkit (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1c1917;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3a3330;
+    border-radius: 0;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a05c20;
+  }
+  /* Scrollbar — Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3a3330 #1c1917;
+  }
+
   body {
     @apply bg-[#faf9f7] text-[#1c1917];
     font-family: var(--font-golos);

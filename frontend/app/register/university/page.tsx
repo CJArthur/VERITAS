@@ -66,7 +66,11 @@ export default function UniversityRegisterPage() {
 
   return (
     <div className="min-h-screen bg-[#faf9f7] flex">
-      <div className="hidden lg:flex lg:w-2/5 bg-[#1c1917] flex-col items-center justify-center p-12">
+      <div className="hidden lg:flex lg:w-2/5 bg-[#1c1917] flex-col items-center justify-center p-12 relative">
+        <Link href="/" className="absolute top-6 left-6 flex items-center gap-1.5 text-stone-500 hover:text-[#f0d4a0] text-xs transition-colors group">
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+          На главную
+        </Link>
         <div className="relative mb-6">
           <Shield className="h-24 w-24 text-[#a05c20]" strokeWidth={1} />
           <span className="absolute inset-0 flex items-center justify-center text-[#f0d4a0] font-bold text-3xl">V</span>

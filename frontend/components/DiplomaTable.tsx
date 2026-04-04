@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Upload, PlusCircle, ChevronRight, AlertTriangle, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DiplomaListItem, ApiError } from "@/lib/api";
 
@@ -119,14 +119,10 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
             <PlusCircle className="h-4 w-4 mr-2" />
             Добавить
           </Button>
-          <label className="cursor-pointer flex-1 sm:flex-none">
-            <Button variant="outline" disabled={csvLoading} asChild className="w-full">
-              <span>
-                <Upload className="h-4 w-4 mr-2" />
-                {csvLoading ? "Загрузка..." : "CSV"}
-                <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
-              </span>
-            </Button>
+          <label className={buttonVariants({ variant: "outline" }) + " cursor-pointer flex-1 sm:flex-none" + (csvLoading ? " opacity-50 pointer-events-none" : "")}>
+              <Upload className="h-4 w-4 mr-2" />
+              {csvLoading ? "Загрузка..." : "CSV"}
+              <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} disabled={csvLoading} />
           </label>
         </div>
       </div>

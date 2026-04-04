@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, ExternalLink, Clock } from "lucide-react";
@@ -108,11 +108,9 @@ export function ShareLinkDialog({ diplomaId, open, onOpenChange }: ShareLinkDial
                 <Button variant="outline" size="icon" onClick={handleCopy} title="Скопировать">
                   {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                 </Button>
-                <Button variant="outline" size="icon" asChild title="Открыть">
-                  <a href={result.verification_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
+                <a href={result.verification_url} target="_blank" rel="noopener noreferrer" title="Открыть" className={buttonVariants({ variant: "outline", size: "icon" })}>
+                  <ExternalLink className="h-4 w-4" />
+                </a>
               </div>
             </div>
             <p className="text-xs text-stone-400">

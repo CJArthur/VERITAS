@@ -4,11 +4,12 @@ from uuid import UUID
 import qrcode
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.schemas import ClaimDiplomaBody, ShareLinkBody
 from app.api.services.diploma_ops import set_share_expiry
-from app.db.models import Diploma, DiplomaStatus, User
+from app.db.models import Diploma, DiplomaStatus, User, VerificationLog
 from app.db.postgres import get_db
 from app.utils.config import PUBLIC_DIPLOMA_URL_BASE
 from app.utils.role_deps import require_student
@@ -27,7 +28,7 @@ def my_diplomas(
 ):
     rows = (
         db.query(Diploma)
-        .options(joinedload(Diploma.university))
+        .options(joinedload(Diploma.university), joinedload(Diploma.logs))
         .filter(Diploma.student_user_id == user.id)
         .order_by(Diploma.created_at.desc())
         .all()
@@ -41,12 +42,53 @@ def my_diplomas(
             "study_end_year": d.study_end_year,
             "status": d.status.value,
             "university_name": d.university.name if d.university else None,
+            "university_avatar_url": d.university.avatar_url if d.university else None,
             "certificate_token": str(d.certificate_token),
             "employer_link_valid_until": d.employer_link_valid_until.isoformat()
             if d.employer_link_valid_until
             else None,
+            "verification_count": len(d.logs),
+            "last_verified_at": max(
+                (lg.verified_at for lg in d.logs), default=None
+            ).isoformat() if d.logs else None,
+            "share_recipient": d.share_recipient,
+            "document_type": d.document_type.value if d.document_type else "diploma",
+            "issuer_name": d.issuer_name,
         }
         for d in rows
+    ]
+
+
+@router.get("/diplomas/{diploma_id}/activity")
+def diploma_activity(
+    diploma_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_student),
+):
+    """Per-diploma verification history visible to the owning student."""
+    d = (
+        db.query(Diploma)
+        .filter(Diploma.id == diploma_id, Diploma.student_user_id == user.id)
+        .first()
+    )
+    if not d:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    logs = (
+        db.query(VerificationLog)
+        .filter(VerificationLog.diploma_id == d.id)
+        .order_by(VerificationLog.verified_at.desc())
+        .limit(20)
+        .all()
+    )
+    return [
+        {
+            "verifier_org": lg.verifier_org_name,
+            "verifier_type": lg.verifier_type,
+            "result": lg.result,
+            "verified_at": lg.verified_at.isoformat(),
+        }
+        for lg in logs
     ]
 
 
@@ -104,12 +146,13 @@ def create_share_link(
     if d.status != DiplomaStatus.active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Diploma not active")
 
-    until = set_share_expiry(db, d, valid_hours=body.valid_hours)
+    until = set_share_expiry(db, d, valid_hours=body.valid_hours, recipient=body.recipient)
     url = f"{PUBLIC_DIPLOMA_URL_BASE.rstrip('/')}/{d.certificate_token}"
     return {
         "verification_url": url,
         "employer_link_valid_until": until.isoformat(),
         "valid_hours": body.valid_hours,
+        "recipient": body.recipient,
     }
 
 

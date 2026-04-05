@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.schemas import PublicDiplomaView
@@ -10,6 +11,23 @@ from app.db.models import Diploma, DiplomaStatus, VerificationLog
 from app.db.postgres import get_db
 
 router = APIRouter(prefix="/public", tags=["Public verification"])
+
+
+@router.get(
+    "/diplomas/{certificate_token}/status",
+    summary="Live status check (polling)",
+    description="Lightweight endpoint for client-side live polling. Returns current diploma status only. No PII. No auth required.",
+)
+def diploma_live_status(certificate_token: UUID, db: Session = Depends(get_db)):
+    """Used by the verification page to detect instant revocation without full re-fetch."""
+    d = (
+        db.query(Diploma.status)
+        .filter(Diploma.certificate_token == certificate_token)
+        .first()
+    )
+    if not d:
+        return {"status": "not_found"}
+    return {"status": d.status.value}
 
 
 @router.get("/diplomas/{certificate_token}", response_model=PublicDiplomaView)
@@ -64,6 +82,12 @@ def public_view_diploma(
     db.add(log)
     db.commit()
 
+    verification_count = (
+        db.query(sqlfunc.count(VerificationLog.id))
+        .filter(VerificationLog.diploma_id == d.id)
+        .scalar() or 0
+    )
+
     return PublicDiplomaView(
         certificate_token=d.certificate_token,
         graduate_full_name=d.graduate_full_name,
@@ -71,7 +95,12 @@ def public_view_diploma(
         study_end_year=d.study_end_year,
         registration_number=d.registration_number,
         university_name=d.university.name if d.university else "",
+        university_avatar_url=d.university.avatar_url if d.university else None,
         status=d.status.value,
         signature_valid=sig_ok,
         employer_link_valid_until=valid_until.isoformat(),
+        verification_count=verification_count,
+        share_recipient=d.share_recipient,
+        document_type=d.document_type.value if d.document_type else "diploma",
+        issuer_name=d.issuer_name,
     )

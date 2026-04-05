@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { VerifyResult } from "@/components/VerifyResult";
+import { RevokePoll } from "@/components/RevokePoll";
 import { Shield, ShieldAlert, FileX, Clock, RefreshCw, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -140,6 +141,9 @@ export default async function VerifyPage({ params }: PageProps) {
   }
 
   return (
-    <VerifyResult data={result.data} checkedAt={new Date().toISOString()} />
+    <>
+      <VerifyResult data={result.data} checkedAt={new Date().toISOString()} />
+      <RevokePoll token={params.token} initialStatus={result.data.status} />
+    </>
   );
 }

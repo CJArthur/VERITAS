@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
-import { GraduationCap, ShieldCheck, XCircle, UserCheck } from "lucide-react";
-import { apiGet, DiplomaListItem } from "@/lib/api";
+import Image from "next/image";
+import { GraduationCap, ShieldCheck, XCircle, UserCheck, Building2 } from "lucide-react";
+import { apiGet, DiplomaListItem, UniversityInfo } from "@/lib/api";
 import { DiplomaTable } from "@/components/DiplomaTable";
 
 export const dynamic = "force-dynamic";
@@ -10,9 +11,14 @@ export default async function UniversityPage() {
   const token = cookieStore.get("access_token")?.value;
 
   let diplomas: DiplomaListItem[] = [];
+  let profile: UniversityInfo | null = null;
+
   if (token) {
     try {
       diplomas = await apiGet<DiplomaListItem[]>("/api/v1/university/diplomas", `access_token=${token}`);
+    } catch {}
+    try {
+      profile = await apiGet<UniversityInfo>("/api/v1/university/profile", `access_token=${token}`);
     } catch {}
   }
 
@@ -22,12 +28,51 @@ export default async function UniversityPage() {
 
   return (
     <div>
-      <div className="flex items-end justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1c1917]">Дипломы</h1>
-          <p className="text-stone-500 text-sm mt-1">Управление дипломами учебного заведения</p>
+      {/* University header with banner/avatar */}
+      {profile && (
+        <div className="mb-6 rounded-xl overflow-hidden border border-stone-200 bg-white shadow-sm">
+          {/* Banner */}
+          <div className="relative h-28 sm:h-36 bg-gradient-to-r from-[#1c1917] to-[#2a2622]">
+            {profile.banner_url && (
+              <Image
+                src={profile.banner_url}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="(max-width: 1280px) 100vw, 1280px"
+                priority
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+
+          {/* Name + avatar */}
+          <div className="px-5 pb-4 flex items-end gap-4 -mt-7 relative z-10">
+            <div className="w-14 h-14 rounded-xl border-2 border-white shadow-md bg-white flex-shrink-0 overflow-hidden relative">
+              {profile.avatar_url ? (
+                <Image src={profile.avatar_url} alt={profile.name} fill className="object-cover" sizes="56px" />
+              ) : (
+                <div className="w-full h-full bg-[#1c1917] flex items-center justify-center">
+                  <Building2 className="h-6 w-6 text-[#a05c20]" strokeWidth={1.5} />
+                </div>
+              )}
+            </div>
+            <div className="pb-1">
+              <h1 className="text-lg font-bold text-[#1c1917] leading-tight">{profile.name}</h1>
+              <p className="text-xs text-stone-400 font-mono mt-0.5">ОГРН {profile.ogrn}</p>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {!profile && (
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-[#1c1917]">Дипломы</h1>
+            <p className="text-stone-500 text-sm mt-1">Управление дипломами учебного заведения</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
         {[

@@ -4,11 +4,14 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
 from app.api.schemas import RejectUniversityBody
-from app.db.models import EmployerApiKey, University, UniversityApprovalStatus, User
+from app.api.services.org_verification import verify_organization
+from app.db.models import Diploma, EmployerApiKey, University, UniversityApprovalStatus, User, VerificationLog
 from app.db.postgres import get_db
+from app.settings import SETTINGS
 from app.utils.role_deps import require_super_admin
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -36,6 +39,51 @@ def list_pending_universities(
         }
         for r in rows
     ]
+
+
+@router.get("/universities/{university_id}/verify", summary="Auto-verify organization via OGRN registries")
+async def auto_verify_university(
+    university_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    """
+    Автоматически проверяет ОГРН организации:
+    1. Контрольная сумма (без сетевых запросов)
+    2. Поиск в ЕГРЮЛ через DaData (если настроен DADATA_API_KEY)
+    3. Возвращает ссылки на Рособрнадзор для проверки лицензии и аккредитации.
+    """
+    uni = db.query(University).filter(University.id == university_id).first()
+    if not uni:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    report = await verify_organization(
+        ogrn=uni.ogrn,
+        dadata_api_key=SETTINGS.DADATA_API_KEY,
+    )
+
+    return {
+        "university_id": str(uni.id),
+        "university_name": uni.name,
+        "ogrn": uni.ogrn,
+        "license_number": uni.license_number,
+        "accreditation_number": uni.accreditation_number,
+        # --- ОГРН ---
+        "ogrn_checksum_valid": report.ogrn.checksum_valid,
+        "ogrn_found_in_egrul": report.ogrn.found_in_egrul,
+        "ogrn_verified_name": report.ogrn.company_name,
+        "ogrn_inn": report.ogrn.inn,
+        "ogrn_is_active": report.ogrn.is_active,
+        "ogrn_dadata_used": report.ogrn.dadata_used,
+        "ogrn_error": report.ogrn.error,
+        # --- Ссылки для ручной проверки ---
+        "fns_url": report.fns_url,
+        "rosobr_license_url": report.rosobr_license_url,
+        "rosobr_accred_url": report.rosobr_accred_url,
+        # --- Итог ---
+        "recommendation": report.recommendation,
+        "recommendation_reason": report.recommendation_reason,
+    }
 
 
 @router.post("/universities/{university_id}/approve")
@@ -113,6 +161,50 @@ def list_employer_api_keys(
         }
         for k in keys
     ]
+
+
+@router.get("/universities", summary="List all universities")
+def list_all_universities(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    rows = db.query(University).order_by(University.created_at.desc()).all()
+    return [
+        {
+            "id": str(r.id),
+            "name": r.name,
+            "ogrn": r.ogrn,
+            "license_number": r.license_number,
+            "accreditation_number": r.accreditation_number,
+            "approval_status": r.approval_status.value,
+            "rejection_reason": r.rejection_reason,
+            "avatar_url": r.avatar_url,
+            "diploma_count": len(r.diplomas),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/stats", summary="Platform statistics")
+def platform_stats(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    total_unis = db.query(sqlfunc.count(University.id)).scalar() or 0
+    approved_unis = (
+        db.query(sqlfunc.count(University.id))
+        .filter(University.approval_status == UniversityApprovalStatus.approved)
+        .scalar() or 0
+    )
+    total_diplomas = db.query(sqlfunc.count(Diploma.id)).scalar() or 0
+    total_verifications = db.query(sqlfunc.count(VerificationLog.id)).scalar() or 0
+    return {
+        "total_universities": total_unis,
+        "approved_universities": approved_unis,
+        "total_diplomas": total_diplomas,
+        "total_verifications": total_verifications,
+    }
 
 
 @router.delete("/employer-keys/{key_id}", summary="Revoke employer API key")

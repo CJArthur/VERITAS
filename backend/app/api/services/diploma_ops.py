@@ -11,6 +11,7 @@ from app.api.services.diploma_crypto import (
 from app.db.models import (
     Diploma,
     DiplomaStatus,
+    DocumentType,
     QualificationType,
     StudyForm,
     University,
@@ -29,6 +30,8 @@ def create_diploma_minimal(
     year: int,
     specialty_name: str,
     diploma_number: str,
+    document_type: str = "diploma",
+    issuer_name: str | None = None,
 ) -> Diploma:
     """Создаёт запись диплома из минимального набора полей (импорт CSV / ручной ввод)."""
     issue_date = date(year, 6, 30)
@@ -63,6 +66,8 @@ def create_diploma_minimal(
         certificate_token=uuid4(),
         issuer_signature=sig,
         status=DiplomaStatus.active,
+        document_type=DocumentType(document_type) if document_type else DocumentType.diploma,
+        issuer_name=issuer_name.strip() if issuer_name else None,
     )
     db.add(d)
     db.commit()
@@ -88,9 +93,11 @@ def set_share_expiry(
     diploma: Diploma,
     *,
     valid_hours: int,
+    recipient: str | None = None,
 ) -> datetime:
     until = datetime.now(timezone.utc) + timedelta(hours=valid_hours)
     diploma.employer_link_valid_until = until
+    diploma.share_recipient = recipient.strip() if recipient else None
     db.commit()
     db.refresh(diploma)
     return until

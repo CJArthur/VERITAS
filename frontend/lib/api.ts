@@ -58,6 +58,15 @@ export function apiDelete<T>(path: string): Promise<T> {
   }).then((r) => handleResponse<T>(r));
 }
 
+export function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  return fetch(`${API_URL}${path}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  }).then((r) => handleResponse<T>(r));
+}
+
 export function apiPostForm<T>(path: string, formData: FormData): Promise<T> {
   return fetch(`${API_URL}${path}`, {
     method: "POST",
@@ -119,6 +128,14 @@ export interface VerificationLogOut {
   result: string;
 }
 
+export type DocumentType = "diploma" | "certificate" | "professional_license";
+
+export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
+  diploma: "Диплом",
+  certificate: "Сертификат",
+  professional_license: "Профессиональная лицензия",
+};
+
 export interface PublicDiplomaView {
   certificate_token: string;
   graduate_full_name: string;
@@ -126,9 +143,14 @@ export interface PublicDiplomaView {
   study_end_year: number;
   registration_number: string;
   university_name: string;
+  university_avatar_url: string | null;
   status: string;
   signature_valid: boolean;
   employer_link_valid_until: string | null;
+  verification_count: number;
+  share_recipient: string | null;
+  document_type: DocumentType;
+  issuer_name: string | null;
 }
 
 export interface StudentDiploma {
@@ -139,8 +161,14 @@ export interface StudentDiploma {
   study_end_year: number;
   status: "active" | "revoked" | "suspended";
   university_name: string | null;
+  university_avatar_url: string | null;
   certificate_token: string;
   employer_link_valid_until: string | null;
+  verification_count: number;
+  last_verified_at: string | null;
+  share_recipient: string | null;
+  document_type: DocumentType;
+  issuer_name: string | null;
 }
 
 export interface UniversityInfo {
@@ -161,4 +189,54 @@ export interface PendingUniversity {
   license_number: string;
   accreditation_number: string;
   created_at: string;
+}
+
+export interface OrgVerificationResult {
+  university_id: string;
+  university_name: string;
+  ogrn: string;
+  license_number: string;
+  accreditation_number: string;
+  // ОГРН checks
+  ogrn_checksum_valid: boolean;
+  ogrn_found_in_egrul: boolean;
+  ogrn_verified_name: string | null;
+  ogrn_inn: string | null;
+  ogrn_is_active: boolean;
+  ogrn_dadata_used: boolean;
+  ogrn_error: string | null;
+  // Links
+  fns_url: string;
+  rosobr_license_url: string;
+  rosobr_accred_url: string;
+  // Recommendation
+  recommendation: "approve" | "reject" | "manual_review";
+  recommendation_reason: string;
+}
+
+export interface AdminUniversityItem {
+  id: string;
+  name: string;
+  ogrn: string;
+  license_number: string;
+  accreditation_number: string;
+  approval_status: "pending" | "approved" | "rejected";
+  rejection_reason: string | null;
+  avatar_url: string | null;
+  diploma_count: number;
+  created_at: string;
+}
+
+export interface AdminStats {
+  total_universities: number;
+  approved_universities: number;
+  total_diplomas: number;
+  total_verifications: number;
+}
+
+export interface DiplomaActivityItem {
+  verifier_org: string | null;
+  verifier_type: string;
+  result: string;
+  verified_at: string;
 }

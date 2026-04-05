@@ -1,7 +1,8 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import or_
+from sqlalchemy import Date, cast, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.schemas import (
@@ -16,7 +17,7 @@ from app.api.schemas import (
 from app.api.services.bulk_diploma_import import import_diplomas_from_upload
 from app.api.services.diploma_ops import create_diploma_minimal, revoke_diploma
 from app.api.services.diploma_crypto import verify_issuer_signature
-from app.db.models import Diploma, DiplomaStatus, University, User
+from app.db.models import Diploma, DiplomaStatus, University, User, VerificationLog
 from app.db.postgres import get_db
 from app.utils.role_deps import get_approved_university_staff
 
@@ -85,6 +86,8 @@ def add_diploma_manual(
         year=body.year,
         specialty_name=body.specialty_name,
         diploma_number=body.diploma_number,
+        document_type=body.document_type,
+        issuer_name=body.issuer_name,
     )
     return {"id": str(d.id), "certificate_token": str(d.certificate_token)}
 
@@ -228,6 +231,134 @@ def get_diploma_detail(
     )
 
 
+@router.get("/analytics", summary="University verification analytics")
+def university_analytics(
+    db: Session = Depends(get_db),
+    ctx: tuple[User, University] = Depends(get_approved_university_staff),
+):
+    _, uni = ctx
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    week_start = now - timedelta(days=7)
+    last_week_start = now - timedelta(days=14)
+
+    # Daily verification counts (last 30 days) — fill gaps with zero
+    daily_rows = (
+        db.query(
+            cast(VerificationLog.verified_at, Date).label("day"),
+            func.count(VerificationLog.id).label("cnt"),
+        )
+        .join(Diploma, VerificationLog.diploma_id == Diploma.id)
+        .filter(
+            Diploma.university_id == uni.id,
+            VerificationLog.verified_at >= thirty_days_ago,
+        )
+        .group_by(cast(VerificationLog.verified_at, Date))
+        .all()
+    )
+    daily_map = {str(r.day): r.cnt for r in daily_rows}
+    daily_counts = [
+        {
+            "date": str((now - timedelta(days=29 - i)).date()),
+            "count": daily_map.get(str((now - timedelta(days=29 - i)).date()), 0),
+        }
+        for i in range(30)
+    ]
+
+    # This week vs last week
+    this_week = (
+        db.query(func.count(VerificationLog.id))
+        .join(Diploma, VerificationLog.diploma_id == Diploma.id)
+        .filter(Diploma.university_id == uni.id, VerificationLog.verified_at >= week_start)
+        .scalar() or 0
+    )
+    last_week = (
+        db.query(func.count(VerificationLog.id))
+        .join(Diploma, VerificationLog.diploma_id == Diploma.id)
+        .filter(
+            Diploma.university_id == uni.id,
+            VerificationLog.verified_at >= last_week_start,
+            VerificationLog.verified_at < week_start,
+        )
+        .scalar() or 0
+    )
+    growth = round((this_week - last_week) / max(last_week, 1) * 100) if last_week else None
+
+    # Top verifying organizations (from employer API keys)
+    top_verifiers = (
+        db.query(
+            VerificationLog.verifier_org_name,
+            func.count(VerificationLog.id).label("cnt"),
+        )
+        .join(Diploma, VerificationLog.diploma_id == Diploma.id)
+        .filter(
+            Diploma.university_id == uni.id,
+            VerificationLog.verifier_org_name.isnot(None),
+        )
+        .group_by(VerificationLog.verifier_org_name)
+        .order_by(func.count(VerificationLog.id).desc())
+        .limit(8)
+        .all()
+    )
+
+    # Total all time
+    total = (
+        db.query(func.count(VerificationLog.id))
+        .join(Diploma, VerificationLog.diploma_id == Diploma.id)
+        .filter(Diploma.university_id == uni.id)
+        .scalar() or 0
+    )
+
+    # Recent activity feed (last 15)
+    recent = (
+        db.query(VerificationLog)
+        .join(Diploma, VerificationLog.diploma_id == Diploma.id)
+        .filter(Diploma.university_id == uni.id)
+        .order_by(VerificationLog.verified_at.desc())
+        .limit(15)
+        .all()
+    )
+
+    # Most verified diplomas
+    top_diplomas = (
+        db.query(
+            Diploma.graduate_full_name,
+            Diploma.specialty_name,
+            func.count(VerificationLog.id).label("cnt"),
+        )
+        .join(VerificationLog, VerificationLog.diploma_id == Diploma.id)
+        .filter(Diploma.university_id == uni.id)
+        .group_by(Diploma.graduate_full_name, Diploma.specialty_name)
+        .order_by(func.count(VerificationLog.id).desc())
+        .limit(5)
+        .all()
+    )
+
+    return {
+        "total_verifications": total,
+        "this_week": this_week,
+        "last_week": last_week,
+        "growth_percent": growth,
+        "daily_counts": daily_counts,
+        "top_verifiers": [
+            {"org_name": v.verifier_org_name, "count": v.cnt} for v in top_verifiers
+        ],
+        "top_diplomas": [
+            {"name": d.graduate_full_name, "specialty": d.specialty_name, "count": d.cnt}
+            for d in top_diplomas
+        ],
+        "recent_activity": [
+            {
+                "verifier_org": r.verifier_org_name,
+                "verifier_type": r.verifier_type,
+                "result": r.result,
+                "verified_at": r.verified_at.isoformat(),
+            }
+            for r in recent
+        ],
+    }
+
+
 @router.get("/profile", response_model=UniversityInfo)
 def get_university_profile(
     ctx: tuple[User, University] = Depends(get_approved_university_staff),
@@ -236,7 +367,7 @@ def get_university_profile(
     return uni
 
 
-@router.patch("/profile")
+@router.patch("/profile", response_model=UniversityInfo)
 def update_university_profile(
     body: UniversityProfilePatch,
     db: Session = Depends(get_db),
@@ -249,4 +380,4 @@ def update_university_profile(
         uni.banner_url = body.banner_url
     db.commit()
     db.refresh(uni)
-    return {"status": "updated", "avatar_url": uni.avatar_url, "banner_url": uni.banner_url}
+    return uni

@@ -52,6 +52,12 @@ class DiplomaStatus(enum.Enum):
     suspended = "suspended"
 
 
+class DocumentType(str, enum.Enum):
+    diploma = "diploma"               # Диплом о высшем / среднем образовании
+    certificate = "certificate"       # Сертификат курса / дополнительного обучения
+    professional_license = "professional_license"  # Профессиональная лицензия / квалификация
+
+
 class University(Base):
     __tablename__ = "universities"
 
@@ -143,6 +149,16 @@ class Diploma(Base):
     employer_link_valid_until: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+    share_recipient: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    document_type: Mapped[DocumentType] = mapped_column(
+        Enum(DocumentType, values_callable=lambda x: [e.value for e in x]),
+        default=DocumentType.diploma,
+    )
+    issuer_name: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Для сертификатов и лицензий — название выдавшей организации (Coursera, Skillbox и др.)",
     )
 
     status: Mapped[DiplomaStatus] = mapped_column(

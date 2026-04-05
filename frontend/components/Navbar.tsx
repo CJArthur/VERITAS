@@ -16,9 +16,11 @@ const NAV_LINKS: Record<string, { label: string; href: string }[]> = {
   student: [
     { label: "Мои дипломы", href: "/student" },
     { label: "Привязать диплом", href: "/student/claim" },
+    { label: "Профиль", href: "/student/profile" },
   ],
   university_staff: [
     { label: "Дипломы", href: "/university" },
+    { label: "Аналитика", href: "/university/analytics" },
     { label: "Профиль ВУЗа", href: "/university/profile" },
   ],
   super_admin: [{ label: "Управление платформой", href: "/admin" }],

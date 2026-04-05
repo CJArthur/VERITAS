@@ -7,7 +7,7 @@ import { Search, Upload, PlusCircle, ChevronRight, AlertTriangle, RefreshCw } fr
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
-import { DiplomaListItem, ApiError, apiGet, apiPost, apiPostForm } from "@/lib/api";
+import { DiplomaListItem, ApiError, apiGet, apiPost, apiPostForm, DOCUMENT_TYPE_LABEL } from "@/lib/api";
 
 interface DiplomaTableProps {
   initial: DiplomaListItem[];
@@ -18,6 +18,8 @@ interface AddForm {
   year: number;
   specialty_name: string;
   diploma_number: string;
+  document_type: string;
+  issuer_name: string;
 }
 
 const defaultForm = (): AddForm => ({
@@ -25,6 +27,8 @@ const defaultForm = (): AddForm => ({
   year: new Date().getFullYear(),
   specialty_name: "",
   diploma_number: "",
+  document_type: "diploma",
+  issuer_name: "",
 });
 
 // Ключ инвалидации — prefix matching покрывает все варианты запроса
@@ -168,10 +172,29 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
               onChange={(e) => setAddForm((p) => ({ ...p, year: Number(e.target.value) }))} required />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-[#1c1917]">Номер диплома</label>
+            <label className="text-xs font-medium text-[#1c1917]">Номер документа</label>
             <Input placeholder="107704 1234567" value={addForm.diploma_number}
               onChange={(e) => setAddForm((p) => ({ ...p, diploma_number: e.target.value }))} required />
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-[#1c1917]">Тип документа</label>
+            <select
+              value={addForm.document_type}
+              onChange={(e) => setAddForm((p) => ({ ...p, document_type: e.target.value }))}
+              className="w-full h-9 rounded-md border border-stone-200 bg-white px-3 text-sm text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-stone-400"
+            >
+              {(Object.entries(DOCUMENT_TYPE_LABEL) as [string, string][]).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
+          </div>
+          {addForm.document_type !== "diploma" && (
+            <div className="space-y-1 col-span-full">
+              <label className="text-xs font-medium text-[#1c1917]">Организация-выдавший (если не ВУЗ)</label>
+              <Input placeholder="ООО Образовательный центр / Coursera" value={addForm.issuer_name}
+                onChange={(e) => setAddForm((p) => ({ ...p, issuer_name: e.target.value }))} />
+            </div>
+          )}
           {addMutation.error && (
             <div className="col-span-full flex items-center gap-2 text-red-600 text-sm">
               <AlertTriangle className="h-4 w-4" />
@@ -183,7 +206,7 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
           <div className="col-span-full flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Отмена</Button>
             <Button type="submit" disabled={addMutation.isPending} className="bg-[#1c1917] text-[#f0d4a0]">
-              {addMutation.isPending ? "Сохранение..." : "Добавить диплом"}
+              {addMutation.isPending ? "Сохранение..." : `Добавить ${DOCUMENT_TYPE_LABEL[addForm.document_type as keyof typeof DOCUMENT_TYPE_LABEL]?.toLowerCase() ?? "документ"}`}
             </Button>
           </div>
         </form>

@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     # False = стандартный флоу: письмо → ссылка → подтверждение
     SKIP_EMAIL_VERIFICATION: bool = False
 
+    # --- DaData API (опционально) --- #
+    # Используется для автоматической проверки ОГРН в ЕГРЮЛ при регистрации организаций.
+    # Без ключа — только математическая валидация контрольной суммы.
+    # Бесплатный тариф: 10 000 запросов/мес. Ключ: https://dadata.ru/profile/#info
+    DADATA_API_KEY: str | None = None
+
 
 
 SETTINGS = Settings()

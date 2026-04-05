@@ -126,6 +126,11 @@ class ClaimDiplomaBody(BaseModel):
 
 class ShareLinkBody(BaseModel):
     valid_hours: int = Field(default=72, ge=1, le=24 * 365)
+    recipient: Optional[str] = Field(
+        default=None,
+        max_length=120,
+        description="Кому открывается доступ — отображается на странице верификации",
+    )
 
 
 class ManualDiplomaIn(BaseModel):
@@ -133,6 +138,8 @@ class ManualDiplomaIn(BaseModel):
     year: int
     specialty_name: str
     diploma_number: str
+    document_type: str = "diploma"   # diploma | certificate | professional_license
+    issuer_name: Optional[str] = None  # заполняется для сертификатов (Coursera, Skillbox…)
 
 
 class PublicDiplomaView(BaseModel):
@@ -142,9 +149,14 @@ class PublicDiplomaView(BaseModel):
     study_end_year: int
     registration_number: str
     university_name: str
+    university_avatar_url: Optional[str] = None
     status: str
     signature_valid: bool
     employer_link_valid_until: Optional[str] = None
+    verification_count: int = 0
+    share_recipient: Optional[str] = None
+    document_type: str = "diploma"
+    issuer_name: Optional[str] = None
 
 
 class SubjectOut(BaseModel):

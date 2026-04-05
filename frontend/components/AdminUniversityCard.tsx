@@ -208,6 +208,14 @@ export function AdminUniversityCard({ university }: AdminUniversityCardProps) {
         </div>
       )}
 
+      {/* Blocked approve warning */}
+      {verification && !verification.ogrn_checksum_valid && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-800">
+          <ShieldX className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-red-500" />
+          <span>Одобрение невозможно — ОГРН не прошёл проверку. Свяжитесь с организацией для уточнения данных.</span>
+        </div>
+      )}
+
       {/* Actions */}
       {rejectMode ? (
         <div className="space-y-2">
@@ -241,7 +249,7 @@ export function AdminUniversityCard({ university }: AdminUniversityCardProps) {
           <Button
             size="sm"
             className="flex-1 bg-green-700 hover:bg-green-800 text-white"
-            disabled={isPending}
+            disabled={isPending || verification?.ogrn_checksum_valid === false}
             onClick={() => approveMutation.mutate()}
           >
             <CheckCircle className="h-3.5 w-3.5 mr-1.5" />

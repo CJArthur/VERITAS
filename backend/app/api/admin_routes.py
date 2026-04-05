@@ -8,7 +8,7 @@ from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
 from app.api.schemas import RejectUniversityBody
-from app.api.services.org_verification import verify_organization
+from app.api.services.org_verification import validate_ogrn_checksum, verify_organization
 from app.db.models import Diploma, EmployerApiKey, University, UniversityApprovalStatus, User, VerificationLog
 from app.db.postgres import get_db
 from app.settings import SETTINGS
@@ -97,6 +97,11 @@ def approve_university(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     if uni.approval_status != UniversityApprovalStatus.pending:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not pending")
+    if not validate_ogrn_checksum(uni.ogrn):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Невозможно одобрить: ОГРН не прошёл проверку контрольной суммы по алгоритму ФНС. Свяжитесь с организацией для уточнения данных.",
+        )
     uni.approval_status = UniversityApprovalStatus.approved
     uni.rejection_reason = None
     db.commit()

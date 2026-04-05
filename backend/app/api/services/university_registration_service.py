@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.services.email_service import send_verification_email_sync
+from app.api.services.email_service import send_verification_email
 from app.db.models import University, User, UserRole, UniversityApprovalStatus
 from app.db.redis_setup import redis_client
 from app.utils.config import BASE_VERIFICATION_URL, VERIFICATION_URL_EXPIRY_SECONDS
@@ -74,6 +74,6 @@ def register_university_account(
         ex=VERIFICATION_URL_EXPIRY_SECONDS,
     )
     verification_link = f"{BASE_VERIFICATION_URL}?token={verification_token}"
-    background_tasks.add_task(send_verification_email_sync, user.email, verification_link)
+    background_tasks.add_task(send_verification_email, user.email, verification_link)
 
     return user

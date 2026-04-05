@@ -12,13 +12,13 @@ from app.settings import SETTINGS
 # ==========================================================
 email_conf = ConnectionConfig(
       MAIL_USERNAME=SETTINGS.MAIL_USERNAME,
-      MAIL_PASSWORD=SETTINGS.MAIL_PASSWORD.get_secret_value(), # Добавьте .get_secret_value()
+      MAIL_PASSWORD=SETTINGS.MAIL_PASSWORD.get_secret_value(),
       MAIL_FROM=SETTINGS.MAIL_FROM,
       MAIL_PORT=SETTINGS.MAIL_PORT,
       MAIL_SERVER=SETTINGS.MAIL_SERVER,
       MAIL_FROM_NAME=SETTINGS.MAIL_FROM_NAME,
-      MAIL_STARTTLS=SETTINGS.MAIL_TLS, # В новых версиях fastapi-mail поле называется так
-      MAIL_SSL_TLS=SETTINGS.MAIL_SSL    # И так для SSL
+      MAIL_STARTTLS=SETTINGS.MAIL_TLS,
+      MAIL_SSL_TLS=SETTINGS.MAIL_SSL
     )
 
 def _build_email(title: str, message: str, button_text: str, action_link: str) -> str:
@@ -38,7 +38,6 @@ def _build_email(title: str, message: str, button_text: str, action_link: str) -
         <!-- HEADER -->
         <tr>
           <td style="padding:36px 40px 28px;text-align:center;border-bottom:1px solid #2a2622;">
-            <!-- Shield SVG logo inline -->
             <div style="display:inline-block;width:56px;height:56px;position:relative;margin-bottom:16px;">
               <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M28 4L50 12V30C50 42 28 52 28 52C28 52 6 42 6 30V12L28 4Z"

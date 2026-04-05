@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from uuid import UUID
 
-from app.api.services.email_service import send_forgot_password_email_sync
+from app.api.services.email_service import send_forgot_password_email
 from app.api.schemas import ResetPassword, ForgotPassword, VerifyPass
 from app.db.models import User
 from app.db.redis_setup import redis_client
@@ -69,7 +69,7 @@ def forgot_password_by_email(user_data: ForgotPassword, background_tasks:Backgro
 
     verification_link = f"{FORGOT_PASSWORD_FRONTEND_URL}?token={reset_pass_token}&login={user.login}"
 
-    background_tasks.add_task(send_forgot_password_email_sync, user.email, verification_link)
+    background_tasks.add_task(send_forgot_password_email, user.email, verification_link)
 
     return user
 

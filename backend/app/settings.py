@@ -30,24 +30,13 @@ class Settings(BaseSettings):
     #! Port: 587 - for TLS, 465 - for SSL(Recommend use TLS)
 
     MAIL_USERNAME: str
-    MAIL_PASSWORD: SecretStr 
-    MAIL_FROM: str 
-    MAIL_PORT: int 
-    MAIL_SERVER: str 
-    MAIL_FROM_NAME: str 
+    MAIL_PASSWORD: SecretStr
+    MAIL_FROM: str
+    MAIL_PORT: int
+    MAIL_SERVER: str
+    MAIL_FROM_NAME: str
     MAIL_TLS: bool
-    MAIL_SSL: bool 
-
-    # email_conf = ConnectionConfig(
-    #     MAIL_USERNAME: str
-    #     MAIL_PASSWORD: SecretStr
-    #     MAIL_FROM: str 
-    #     MAIL_PORT: int 
-    #     MAIL_SERVER: str 
-    #     MAIL_FROM_NAME: str 
-    #     MAIL_TLS: bool
-    #     MAIL_SSL: bool 
-    # )
+    MAIL_SSL: bool
 
     # --- Token`s time life
     VERIFICATION_URL_EXPIRY_SECONDS: int = 1800 # Code active 30 min

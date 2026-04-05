@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.db.models import User, UserRole
 from app.db.redis_setup import redis_client
-from app.api.services.email_service import send_verification_email_sync
+from app.api.services.email_service import send_verification_email
 from app.utils.security import generate_verification_token, hash_password
 from app.utils.config import (
     VERIFICATION_URL_EXPIRY_SECONDS,
@@ -84,6 +84,6 @@ def registr_user(user_login: str, user_email: str, user_password: str,
     verification_link = f"{BASE_VERIFICATION_URL}?token={verification_token}"
     
     # 5. Отправка Email
-    background_tasks.add_task(send_verification_email_sync, user.email, verification_link)
+    background_tasks.add_task(send_verification_email, user.email, verification_link)
 
     return user

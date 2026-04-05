@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 import { apiGet, PendingUniversity } from "@/lib/api";
 import { AdminUniversityCard } from "@/components/AdminUniversityCard";
@@ -10,12 +9,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
-  if (!token) redirect("/login");
 
   let pending: PendingUniversity[] = [];
-  try {
-    pending = await apiGet<PendingUniversity[]>("/api/v1/admin/universities/pending", `access_token=${token}`);
-  } catch {}
+  if (token) {
+    try {
+      pending = await apiGet<PendingUniversity[]>("/api/v1/admin/universities/pending", `access_token=${token}`);
+    } catch {}
+  }
 
   return (
     <div>

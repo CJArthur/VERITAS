@@ -1,22 +1,22 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PlusCircle, GraduationCap, ShieldCheck, XCircle } from "lucide-react";
 import { apiGet, StudentDiploma } from "@/lib/api";
 import { DiplomaCard } from "@/components/DiplomaCard";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/lib/button-variants";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
-  if (!token) redirect("/login");
 
   let diplomas: StudentDiploma[] = [];
-  try {
-    diplomas = await apiGet<StudentDiploma[]>("/api/v1/student/diplomas", `access_token=${token}`);
-  } catch {}
+  if (token) {
+    try {
+      diplomas = await apiGet<StudentDiploma[]>("/api/v1/student/diplomas", `access_token=${token}`);
+    } catch {}
+  }
 
   const active = diplomas.filter((d) => d.status === "active").length;
   const revoked = diplomas.filter((d) => d.status === "revoked").length;

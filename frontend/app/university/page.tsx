@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { GraduationCap, ShieldCheck, XCircle, UserCheck } from "lucide-react";
 import { apiGet, DiplomaListItem } from "@/lib/api";
 import { DiplomaTable } from "@/components/DiplomaTable";
@@ -9,12 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function UniversityPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
-  if (!token) redirect("/login");
 
   let diplomas: DiplomaListItem[] = [];
-  try {
-    diplomas = await apiGet<DiplomaListItem[]>("/api/v1/university/diplomas", `access_token=${token}`);
-  } catch {}
+  if (token) {
+    try {
+      diplomas = await apiGet<DiplomaListItem[]>("/api/v1/university/diplomas", `access_token=${token}`);
+    } catch {}
+  }
 
   const active  = diplomas.filter((d) => d.status === "active").length;
   const revoked = diplomas.filter((d) => d.status === "revoked").length;

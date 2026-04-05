@@ -12,6 +12,52 @@ export class ApiError extends Error {
   }
 }
 
+// ── 401 interceptor ───────────────────────────────────────────────────────────
+// Singleton promise — если несколько запросов одновременно получили 401,
+// только один refresh уйдёт на сервер, остальные дождутся его результата.
+let _refreshing: Promise<boolean> | null = null;
+
+async function tryRefreshTokens(): Promise<boolean> {
+  if (_refreshing) return _refreshing;
+  _refreshing = fetch(`${API_URL}/api/v1/refresh`, {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+  })
+    .then((r) => r.ok)
+    .catch(() => false)
+    .finally(() => { _refreshing = null; });
+  return _refreshing;
+}
+
+function redirectToLogin(): void {
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
+  }
+}
+
+/**
+ * Обёртка над fetch с автоматическим обновлением токена при 401.
+ * Используется только для клиентских запросов (cookie не передаётся явно).
+ */
+async function fetchWithRefresh(input: string, init: RequestInit): Promise<Response> {
+  const res = await fetch(input, init);
+  if (res.status !== 401) return res;
+
+  // Пробуем тихо обновить токены
+  const refreshed = await tryRefreshTokens();
+  if (!refreshed) {
+    // Refresh тоже истёк — отправляем на логин
+    redirectToLogin();
+    return res;
+  }
+
+  // Повторяем оригинальный запрос с новыми куками
+  return fetch(input, init);
+}
+
+// ── Response handler ──────────────────────────────────────────────────────────
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
@@ -25,16 +71,25 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+// ── Public API helpers ────────────────────────────────────────────────────────
+
 export function apiGet<T>(path: string, cookie?: string): Promise<T> {
-  return fetch(`${API_URL}${path}`, {
+  // Server-side (SSR) — cookie передаётся явно, refresh не нужен
+  if (cookie) {
+    return fetch(`${API_URL}${path}`, {
+      credentials: "include",
+      cache: "no-store",
+      headers: { Cookie: cookie },
+    }).then((r) => handleResponse<T>(r));
+  }
+  return fetchWithRefresh(`${API_URL}${path}`, {
     credentials: "include",
     cache: "no-store",
-    headers: cookie ? { Cookie: cookie } : {},
   }).then((r) => handleResponse<T>(r));
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  return fetch(`${API_URL}${path}`, {
+  return fetchWithRefresh(`${API_URL}${path}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -43,7 +98,7 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
 }
 
 export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
-  return fetch(`${API_URL}${path}`, {
+  return fetchWithRefresh(`${API_URL}${path}`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -52,14 +107,14 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
 }
 
 export function apiDelete<T>(path: string): Promise<T> {
-  return fetch(`${API_URL}${path}`, {
+  return fetchWithRefresh(`${API_URL}${path}`, {
     method: "DELETE",
     credentials: "include",
   }).then((r) => handleResponse<T>(r));
 }
 
 export function apiPut<T>(path: string, body?: unknown): Promise<T> {
-  return fetch(`${API_URL}${path}`, {
+  return fetchWithRefresh(`${API_URL}${path}`, {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -68,7 +123,7 @@ export function apiPut<T>(path: string, body?: unknown): Promise<T> {
 }
 
 export function apiPostForm<T>(path: string, formData: FormData): Promise<T> {
-  return fetch(`${API_URL}${path}`, {
+  return fetchWithRefresh(`${API_URL}${path}`, {
     method: "POST",
     credentials: "include",
     body: formData,

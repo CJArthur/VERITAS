@@ -6,6 +6,62 @@ const ROLE_PATHS: Record<string, string[]> = {
   super_admin: ["/admin"],
 };
 
+const API_URL = process.env.API_URL || "http://localhost:8200";
+
+async function fetchUser(accessToken: string): Promise<{ role: string } | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/me`, {
+      headers: { Cookie: `access_token=${accessToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function tryRefresh(
+  refreshToken: string
+): Promise<{ user: { role: string }; setCookies: string[] } | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/refresh`, {
+      method: "POST",
+      headers: { Cookie: `refresh_token=${refreshToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+
+    // Достаём все Set-Cookie заголовки (Edge Runtime поддерживает getSetCookie)
+    const setCookies: string[] =
+      typeof (res.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie ===
+      "function"
+        ? (res.headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
+        : [res.headers.get("set-cookie") ?? ""].filter(Boolean);
+
+    // Извлекаем новый access_token чтобы сразу получить данные пользователя
+    const newAccessToken = setCookies
+      .map((c) => c.match(/^access_token=([^;]+)/)?.[1])
+      .find(Boolean);
+
+    if (!newAccessToken) return null;
+
+    const user = await fetchUser(newAccessToken);
+    if (!user) return null;
+
+    return { user, setCookies };
+  } catch {
+    return null;
+  }
+}
+
+function roleHomePath(role: string): string {
+  if (role === "student") return "/student";
+  if (role === "university_staff") return "/university";
+  if (role === "super_admin") return "/admin";
+  return "/login";
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -17,44 +73,55 @@ export async function middleware(request: NextRequest) {
   if (!isProtected) return NextResponse.next();
 
   const accessToken = request.cookies.get("access_token")?.value;
-  if (!accessToken) {
+  const refreshToken = request.cookies.get("refresh_token")?.value;
+
+  // Нет ни одного токена — на логин
+  if (!accessToken && !refreshToken) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  try {
-    const apiUrl = process.env.API_URL || "http://localhost:8200";
-    const res = await fetch(`${apiUrl}/api/v1/me`, {
-      headers: { Cookie: `access_token=${accessToken}` },
-      cache: "no-store",
-    });
+  let user: { role: string } | null = null;
+  let newCookies: string[] = [];
 
-    if (!res.ok) {
-      return NextResponse.redirect(new URL("/login", request.url));
+  // Пробуем текущий access token
+  if (accessToken) {
+    user = await fetchUser(accessToken);
+  }
+
+  // Access token протух или отсутствует — тихо обновляем через refresh token
+  if (!user && refreshToken) {
+    const refreshed = await tryRefresh(refreshToken);
+    if (refreshed) {
+      user = refreshed.user;
+      newCookies = refreshed.setCookies;
     }
+  }
 
-    const user = await res.json();
-    const role: string = user.role;
+  // Оба токена невалидны — на логин
+  if (!user) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
-    for (const [allowedRole, paths] of Object.entries(ROLE_PATHS)) {
-      for (const path of paths) {
-        if (pathname.startsWith(path) && role !== allowedRole) {
-          const home =
-            role === "student"
-              ? "/student"
-              : role === "university_staff"
-                ? "/university"
-                : role === "super_admin"
-                  ? "/admin"
-                  : "/login";
-          return NextResponse.redirect(new URL(home, request.url));
-        }
+  // Проверяем что роль соответствует запрошенному пути
+  const { role } = user;
+  for (const [allowedRole, paths] of Object.entries(ROLE_PATHS)) {
+    for (const path of paths) {
+      if (pathname.startsWith(path) && role !== allowedRole) {
+        return NextResponse.redirect(
+          new URL(roleHomePath(role), request.url)
+        );
       }
     }
-  } catch {
-    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  // Если обновили токены — прокидываем новые куки в браузер
+  for (const cookie of newCookies) {
+    response.headers.append("Set-Cookie", cookie);
+  }
+
+  return response;
 }
 
 export const config = {

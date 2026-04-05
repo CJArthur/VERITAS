@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Key, Plus, Trash2, Copy, Check, Clock, Building2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiGet, apiPost, apiDelete } from "@/lib/api";
 
 interface ApiKeyEntry {
   id: string;
@@ -21,70 +22,48 @@ interface NewKeyResult {
   warning: string;
 }
 
+const KEYS_QUERY_KEY = ["employer-keys"] as const;
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8200";
+
 export function ApiKeyManager() {
-  const [keys, setKeys] = useState<ApiKeyEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [orgName, setOrgName] = useState("");
-  const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<NewKeyResult | null>(null);
-  const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [revoking, setRevoking] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8200";
+  const { data: keys = [], isLoading } = useQuery({
+    queryKey: KEYS_QUERY_KEY,
+    queryFn: () => apiGet<ApiKeyEntry[]>("/api/v1/admin/employer-keys"),
+  });
 
-  async function loadKeys() {
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/admin/employer-keys`, {
-        credentials: "include",
-      });
-      if (res.ok) setKeys(await res.json());
-    } catch {}
-    setLoading(false);
-  }
-
-  useEffect(() => { loadKeys(); }, []);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!orgName.trim()) return;
-    setCreating(true); setError("");
-    try {
-      const res = await fetch(
-        `${apiUrl}/api/v1/admin/employer-keys?org_name=${encodeURIComponent(orgName.trim())}`,
-        { method: "POST", credentials: "include" }
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new ApiError(res.status, body.detail || "Ошибка создания ключа");
-      }
-      const data: NewKeyResult = await res.json();
+  const createMutation = useMutation({
+    mutationFn: (name: string) =>
+      apiPost<NewKeyResult>(
+        `/api/v1/admin/employer-keys?org_name=${encodeURIComponent(name)}`
+      ),
+    onSuccess: (data) => {
       setNewKey(data);
       setOrgName("");
-      await loadKeys();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Ошибка");
-    } finally {
-      setCreating(false);
-    }
-  }
+      queryClient.invalidateQueries({ queryKey: KEYS_QUERY_KEY });
+    },
+  });
 
-  async function handleRevoke(id: string) {
-    setRevoking(id);
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/admin/employer-keys/${id}`, {
-        method: "DELETE", credentials: "include",
-      });
-      if (res.ok) await loadKeys();
-    } catch {}
-    setRevoking(null);
-  }
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) => apiDelete<void>(`/api/v1/admin/employer-keys/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEYS_QUERY_KEY }),
+  });
 
   async function handleCopy() {
     if (!newKey) return;
     await navigator.clipboard.writeText(newKey.api_key);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
+  }
+
+  function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!orgName.trim()) return;
+    createMutation.mutate(orgName.trim());
   }
 
   return (
@@ -133,12 +112,18 @@ export function ApiKeyManager() {
             className="flex-1"
             required
           />
-          <Button type="submit" disabled={creating}
+          <Button type="submit" disabled={createMutation.isPending}
             className="bg-[#1c1917] text-[#f0d4a0] hover:bg-[#2a2622] sm:flex-shrink-0 w-full sm:w-auto">
-            {creating ? "Создание..." : "Создать ключ"}
+            {createMutation.isPending ? "Создание..." : "Создать ключ"}
           </Button>
         </form>
-        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        {createMutation.error && (
+          <p className="text-xs text-red-600 mt-2">
+            {createMutation.error instanceof ApiError
+              ? createMutation.error.detail
+              : "Ошибка создания ключа"}
+          </p>
+        )}
         <p className="text-xs text-stone-400 mt-3">
           Ключ выдаётся один раз. После создания — сохраните и передайте организации. Использование:{" "}
           <code className="bg-stone-100 px-1 rounded">Authorization: Bearer &lt;key&gt;</code>
@@ -150,10 +135,10 @@ export function ApiKeyManager() {
         <div className="px-5 py-3 border-b border-stone-100 bg-stone-50 flex items-center gap-2">
           <Key className="h-4 w-4 text-stone-400" />
           <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
-            Активные ключи ({keys.filter(k => k.is_active).length})
+            Активные ключи ({keys.filter((k) => k.is_active).length})
           </h3>
         </div>
-        {loading ? (
+        {isLoading ? (
           <div className="py-12 text-center text-stone-400 text-sm">Загрузка...</div>
         ) : keys.length === 0 ? (
           <div className="py-12 text-center text-stone-400 text-sm">Ключи ещё не выданы</div>
@@ -190,11 +175,15 @@ export function ApiKeyManager() {
                     variant="outline"
                     size="sm"
                     className="border-red-200 text-red-600 hover:bg-red-50 text-xs flex-shrink-0"
-                    disabled={revoking === k.id}
-                    onClick={() => handleRevoke(k.id)}
+                    disabled={revokeMutation.isPending && revokeMutation.variables === k.id}
+                    onClick={() => revokeMutation.mutate(k.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5 sm:mr-1" />
-                    <span className="hidden sm:inline">{revoking === k.id ? "..." : "Отозвать"}</span>
+                    <span className="hidden sm:inline">
+                      {revokeMutation.isPending && revokeMutation.variables === k.id
+                        ? "..."
+                        : "Отозвать"}
+                    </span>
                   </Button>
                 )}
               </div>
@@ -215,7 +204,7 @@ export function ApiKeyManager() {
             Возвращает полные данные диплома с результатом криптопроверки. Каждый запрос фиксируется в журнале.
           </p>
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8200"}/docs#/Employer%20API`}
+            href={`${apiUrl}/docs#/Employer%20API`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-[#a05c20] text-xs font-medium hover:text-[#c8895a]"

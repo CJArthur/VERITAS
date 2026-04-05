@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { GraduationCap, Building2, Calendar, QrCode, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -13,25 +14,35 @@ interface DiplomaCardProps {
 
 export function DiplomaCard({ diploma }: DiplomaCardProps) {
   const [shareOpen, setShareOpen] = useState(false);
+  const [qrError, setQrError] = useState("");
 
-  async function handleDownloadQr() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8200";
-    const res = await fetch(
-      `${apiUrl}/api/v1/student/diplomas/${diploma.id}/qr.png`,
-      { credentials: "include" }
-    );
-    if (!res.ok) {
-      alert("Сначала создайте ссылку для работодателя");
-      return;
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `veritas-qr-${diploma.registration_number}.png`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const qrMutation = useMutation({
+    mutationFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8200";
+      const res = await fetch(
+        `${apiUrl}/api/v1/student/diplomas/${diploma.id}/qr.png`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("no_share");
+      return res.blob();
+    },
+    onSuccess: (blob) => {
+      setQrError("");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `veritas-qr-${diploma.registration_number}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    onError: (err: Error) => {
+      setQrError(
+        err.message === "no_share"
+          ? "Сначала создайте ссылку для работодателя"
+          : "Ошибка загрузки QR"
+      );
+    },
+  });
 
   return (
     <>
@@ -64,19 +75,31 @@ export function DiplomaCard({ diploma }: DiplomaCardProps) {
           <div className="text-xs text-stone-400 font-mono bg-stone-50 rounded px-2 py-1">
             {diploma.registration_number}
           </div>
+          {qrError && (
+            <p className="text-xs text-red-600">{qrError}</p>
+          )}
         </div>
 
         {diploma.status === "active" && (
           <div className="px-5 pb-4 flex gap-2">
-            <Button variant="outline" size="sm"
+            <Button
+              variant="outline"
+              size="sm"
               className="flex-1 border-[#a05c20] text-[#a05c20] hover:bg-[#a05c20] hover:text-white"
-              onClick={() => setShareOpen(true)}>
+              onClick={() => setShareOpen(true)}
+            >
               <Share2 className="h-3.5 w-3.5 mr-1.5" />
               Поделиться
             </Button>
-            <Button variant="outline" size="sm" className="flex-1" onClick={handleDownloadQr}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              disabled={qrMutation.isPending}
+              onClick={() => qrMutation.mutate()}
+            >
               <QrCode className="h-3.5 w-3.5 mr-1.5" />
-              QR-код
+              {qrMutation.isPending ? "..." : "QR-код"}
             </Button>
           </div>
         )}

@@ -1,63 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Building2, Save, CheckCircle } from "lucide-react";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiGet, apiPatch, UniversityInfo } from "@/lib/api";
 import { CloudinaryUpload } from "@/components/CloudinaryUpload";
 import { Button } from "@/components/ui/button";
 
-interface UniversityInfo {
-  id: string;
-  name: string;
-  ogrn: string;
-  license_number: string;
-  accreditation_number: string;
-  avatar_url?: string | null;
-  banner_url?: string | null;
-  approval_status: string;
-}
+const PROFILE_QUERY_KEY = ["university-profile"] as const;
 
 export default function UniversityProfilePage() {
-  const [profile, setProfile] = useState<UniversityInfo | null>(null);
+  const queryClient = useQueryClient();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8200";
+  const { data: profile } = useQuery({
+    queryKey: PROFILE_QUERY_KEY,
+    queryFn: () => apiGet<UniversityInfo>("/api/v1/university/profile"),
+  });
 
+  // Синхронизируем локальное состояние при первой загрузке профиля
   useEffect(() => {
-    fetch(`${apiUrl}/api/v1/university/profile`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((p) => {
-        setProfile(p);
-        setAvatarUrl(p.avatar_url);
-        setBannerUrl(p.banner_url);
-      });
-  }, []);
+    if (profile) {
+      setAvatarUrl(profile.avatar_url ?? null);
+      setBannerUrl(profile.banner_url ?? null);
+    }
+  }, [profile]);
 
-  async function handleSave() {
-    setSaving(true); setError("");
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/university/profile`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar_url: avatarUrl, banner_url: bannerUrl }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new ApiError(res.status, body.detail || "Ошибка");
-      }
+  const saveMutation = useMutation({
+    mutationFn: (data: { avatar_url: string | null; banner_url: string | null }) =>
+      apiPatch<UniversityInfo>("/api/v1/university/profile", data),
+    onSuccess: (updated) => {
+      // Обновляем кэш напрямую — лишний network запрос не нужен
+      queryClient.setQueryData(PROFILE_QUERY_KEY, updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Ошибка сохранения");
-    } finally {
-      setSaving(false);
-    }
-  }
+    },
+  });
 
   if (!profile) {
     return (
@@ -100,22 +80,33 @@ export default function UniversityProfilePage() {
           <div>
             <p className="text-sm font-medium text-[#1c1917] mb-2">Логотип / Аватар</p>
             <CloudinaryUpload currentUrl={avatarUrl} label="Загрузить логотип"
-              folder="veritas/avatars" onUploaded={(url) => setAvatarUrl(url)}
+              folder="veritas/avatars" onUploaded={setAvatarUrl}
               aspectClass="aspect-square max-w-[160px]" />
           </div>
           <div>
             <p className="text-sm font-medium text-[#1c1917] mb-2">Баннер</p>
             <CloudinaryUpload currentUrl={bannerUrl} label="Загрузить баннер"
-              folder="veritas/banners" onUploaded={(url) => setBannerUrl(url)}
+              folder="veritas/banners" onUploaded={setBannerUrl}
               aspectClass="aspect-[3/1]" />
           </div>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <Button onClick={handleSave} disabled={saving}
-          className="bg-[#1c1917] text-[#f0d4a0] hover:bg-[#2a2622]">
+
+        {saveMutation.error && (
+          <p className="text-sm text-red-600">
+            {saveMutation.error instanceof ApiError
+              ? saveMutation.error.detail
+              : "Ошибка сохранения"}
+          </p>
+        )}
+
+        <Button
+          onClick={() => saveMutation.mutate({ avatar_url: avatarUrl, banner_url: bannerUrl })}
+          disabled={saveMutation.isPending}
+          className="bg-[#1c1917] text-[#f0d4a0] hover:bg-[#2a2622]"
+        >
           {saved ? (
             <><CheckCircle className="h-4 w-4 mr-2" />Сохранено</>
-          ) : saving ? "Сохранение..." : (
+          ) : saveMutation.isPending ? "Сохранение..." : (
             <><Save className="h-4 w-4 mr-2" />Сохранить изменения</>
           )}
         </Button>

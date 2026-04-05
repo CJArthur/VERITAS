@@ -219,7 +219,28 @@ NEXT_PUBLIC_API_URL=https://api.your-domain.com
 API_URL=https://api.your-domain.com
 ```
 
-`API_URL` используется для server-side запросов (SSR) — должен быть доступен с сервера, где запущен Next.js.
+`API_URL` используется для server-side запросов (SSR и middleware) — должен быть прямым URL бэкенда, недоступным через прокси.
+
+### Раздельный деплой (Vercel + Railway)
+
+При раздельном деплое браузер не может передавать httpOnly-куки между доменами (`vercel.app` → `railway.app`). Для решения этой проблемы фронтенд включает встроенный API-прокси (`/api/proxy/...`), который пересылает клиентские запросы на бэкенд и возвращает `Set-Cookie` на домене Vercel.
+
+```env
+# Vercel — переменные окружения
+NEXT_PUBLIC_API_URL=/api/proxy   # клиентские запросы идут через прокси
+API_URL=https://your-backend.up.railway.app  # middleware и SSR — напрямую
+```
+
+### Единый сервер (продакшн)
+
+Когда фронтенд и бэкенд на одном домене, прокси не нужен. Достаточно изменить одну переменную:
+
+```env
+NEXT_PUBLIC_API_URL=https://api.your-domain.com  # напрямую, без прокси
+API_URL=https://api.your-domain.com
+```
+
+Файл `frontend/app/api/proxy/[...path]/route.ts` можно удалить — он больше не будет вызываться.
 
 ### Docker Compose (API + БД + Redis)
 

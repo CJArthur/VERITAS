@@ -8,12 +8,13 @@ export default async function UniversityLayout({ children }: { children: React.R
   const token = cookieStore.get("access_token")?.value;
   if (!token) redirect("/login");
 
-  let user: UserMe;
+  let user: UserMe | null = null;
   try {
     user = await apiGet<UserMe>("/api/v1/me", `access_token=${token}`);
   } catch {
-    redirect("/login");
+    // ignore — redirect below
   }
+  if (!user) redirect("/login");
 
   return (
     <div className="min-h-screen bg-[#faf9f7] flex flex-col">

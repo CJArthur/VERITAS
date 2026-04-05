@@ -7,12 +7,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const cookieStore = cookies();
   const token = cookieStore.get("access_token")?.value;
   if (!token) redirect("/login");
+  let user: UserMe | null = null;
   try {
-    const user = await apiGet<UserMe>("/api/v1/me", `access_token=${token}`);
-    if (user.role !== "super_admin") redirect("/login");
+    user = await apiGet<UserMe>("/api/v1/me", `access_token=${token}`);
   } catch {
-    redirect("/login");
+    // ignore — redirect below
   }
+  if (!user || user.role !== "super_admin") redirect("/login");
   return (
     <div className="min-h-screen bg-[#faf9f7] flex flex-col">
       <Navbar role="super_admin" />

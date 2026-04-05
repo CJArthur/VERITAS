@@ -24,10 +24,16 @@ logging.basicConfig(
 
 app = FastAPI(title="VERITAS API")
 
-origins = [o.strip() for o in SETTINGS.ALLOWED_ORIGINS.split(",") if o.strip()]
+def _cors_origins() -> list[str]:
+    raw = (SETTINGS.ALLOWED_ORIGINS or "").strip()
+    if not raw:
+        return [SETTINGS.FRONTEND_URL]
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[SETTINGS.ALLOWED_ORIGINS],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

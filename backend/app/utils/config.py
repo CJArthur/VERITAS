@@ -29,10 +29,8 @@ PROJECTS_SERVICE_URL = os.getenv("PROJECTS_SERVICE_URL")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
 # --- Public diploma / QR (URL для работодателя) --- #
-PUBLIC_DIPLOMA_URL_BASE = os.getenv(
-    "PUBLIC_DIPLOMA_URL_BASE",
-    "http://127.0.0.1:8200/api/v1/public/diplomas",
-)
+_frontend = os.getenv("FRONTEND_URL", "http://localhost:3000")
+PUBLIC_DIPLOMA_URL_BASE = f"{_frontend.rstrip('/')}/v"
 
 # --- Первый суперадмин по email (один раз при пустой таблице super_admin) --- #
 BOOTSTRAP_SUPER_ADMIN_EMAIL = os.getenv("BOOTSTRAP_SUPER_ADMIN_EMAIL", "")

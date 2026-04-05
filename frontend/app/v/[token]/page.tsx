@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { VerifyResult } from "@/components/VerifyResult";
-import { Shield, ShieldX, ShieldAlert, FileX, Clock, RefreshCw, ArrowLeft } from "lucide-react";
+import { Shield, ShieldAlert, FileX, Clock, RefreshCw, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 interface PageProps {
@@ -9,7 +9,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   return {
-    title: `Верификация диплома — VERITAS`,
+    title: `Верификация ${params.token.slice(0, 8)}… — VERITAS`,
     robots: { index: false },
   };
 }

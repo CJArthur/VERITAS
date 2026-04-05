@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { Upload, ImageIcon } from "lucide-react";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
@@ -35,8 +36,8 @@ export function CloudinaryUpload({
     try {
       const result = await uploadToCloudinary(file, folder);
       onUploaded(result.secure_url);
-    } catch (err: any) {
-      setError(err.message ?? "Ошибка загрузки");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Ошибка загрузки");
       setPreview(currentUrl ?? null);
     } finally {
       setLoading(false);
@@ -55,7 +56,7 @@ export function CloudinaryUpload({
       >
         {preview ? (
           <>
-            <img src={preview} alt="" className="w-full h-full object-cover" />
+            <Image src={preview} alt="" fill className="object-cover" unoptimized={preview.startsWith("blob:")} />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <Upload className="h-6 w-6 text-white" />
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -8,11 +9,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, ExternalLink, Clock } from "lucide-react";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiPost } from "@/lib/api";
 
 interface ShareLinkDialogProps {
   diplomaId: string;
@@ -20,35 +21,23 @@ interface ShareLinkDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface ShareResult {
+  verification_url: string;
+  employer_link_valid_until: string;
+}
+
 export function ShareLinkDialog({ diplomaId, open, onOpenChange }: ShareLinkDialogProps) {
   const [hours, setHours] = useState(72);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ verification_url: string; employer_link_valid_until: string } | null>(null);
-  const [error, setError] = useState("");
+  const [result, setResult] = useState<ShareResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function handleCreate() {
-    setError(""); setLoading(true);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8200";
-      const res = await fetch(`${apiUrl}/api/v1/student/diplomas/${diplomaId}/share`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valid_hours: hours }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new ApiError(res.status, body.detail || "Ошибка");
-      }
-      const data = await res.json();
-      setResult(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Ошибка создания ссылки");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const createMutation = useMutation({
+    mutationFn: (validHours: number) =>
+      apiPost<ShareResult>(`/api/v1/student/diplomas/${diplomaId}/share`, {
+        valid_hours: validHours,
+      }),
+    onSuccess: (data) => setResult(data),
+  });
 
   async function handleCopy() {
     if (!result) return;
@@ -60,8 +49,8 @@ export function ShareLinkDialog({ diplomaId, open, onOpenChange }: ShareLinkDial
   function handleClose() {
     onOpenChange(false);
     setResult(null);
-    setError("");
     setHours(72);
+    createMutation.reset();
   }
 
   return (
@@ -81,18 +70,32 @@ export function ShareLinkDialog({ diplomaId, open, onOpenChange }: ShareLinkDial
             </p>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[#1c1917]">Срок действия (часы)</Label>
-              <Input type="number" min={1} max={8760} value={hours}
-                onChange={(e) => setHours(Number(e.target.value))} />
+              <Input
+                type="number"
+                min={1}
+                max={8760}
+                value={hours}
+                onChange={(e) => setHours(Number(e.target.value))}
+              />
               <p className="text-xs text-stone-400">
                 {hours < 24 ? `${hours} ч` : `${Math.round(hours / 24)} дн.`} — ссылка автоматически истечёт
               </p>
             </div>
-            {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
+            {createMutation.error && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                {createMutation.error instanceof ApiError
+                  ? createMutation.error.detail
+                  : "Ошибка создания ссылки"}
+              </p>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={handleClose}>Отмена</Button>
-              <Button onClick={handleCreate} disabled={loading}
-                className="bg-[#1c1917] text-[#f0d4a0] hover:bg-[#2a2622]">
-                {loading ? "Создание..." : "Создать ссылку"}
+              <Button
+                onClick={() => createMutation.mutate(hours)}
+                disabled={createMutation.isPending}
+                className="bg-[#1c1917] text-[#f0d4a0] hover:bg-[#2a2622]"
+              >
+                {createMutation.isPending ? "Создание..." : "Создать ссылку"}
               </Button>
             </DialogFooter>
           </div>
@@ -104,22 +107,33 @@ export function ShareLinkDialog({ diplomaId, open, onOpenChange }: ShareLinkDial
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[#1c1917]">Ссылка верификации</Label>
               <div className="flex gap-2">
-                <Input readOnly value={result.verification_url} className="font-mono text-xs bg-stone-50" />
+                <Input
+                  readOnly
+                  value={result.verification_url}
+                  className="font-mono text-xs bg-stone-50"
+                />
                 <Button variant="outline" size="icon" onClick={handleCopy} title="Скопировать">
                   {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                 </Button>
-                <Button variant="outline" size="icon" asChild title="Открыть">
-                  <a href={result.verification_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
+                <a
+                  href={result.verification_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Открыть"
+                  className={buttonVariants({ variant: "outline", size: "icon" })}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
               </div>
             </div>
             <p className="text-xs text-stone-400">
-              Действительна до: {new Date(result.employer_link_valid_until).toLocaleString("ru-RU")}
+              Действительна до:{" "}
+              {new Date(result.employer_link_valid_until).toLocaleString("ru-RU")}
             </p>
             <DialogFooter>
-              <Button onClick={handleClose} className="bg-[#1c1917] text-[#f0d4a0]">Готово</Button>
+              <Button onClick={handleClose} className="bg-[#1c1917] text-[#f0d4a0]">
+                Готово
+              </Button>
             </DialogFooter>
           </div>
         )}

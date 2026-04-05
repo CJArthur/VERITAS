@@ -1,10 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { PlusCircle, GraduationCap, ShieldCheck, Clock, XCircle } from "lucide-react";
+import { PlusCircle, GraduationCap, ShieldCheck, XCircle } from "lucide-react";
 import { apiGet, StudentDiploma } from "@/lib/api";
 import { DiplomaCard } from "@/components/DiplomaCard";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +28,10 @@ export default async function StudentPage() {
           <h1 className="text-2xl font-bold text-[#1c1917]">Мои дипломы</h1>
           <p className="text-stone-500 text-sm mt-1">Управляйте дипломами и ссылками для работодателей</p>
         </div>
-        <Button asChild className="bg-[#1c1917] text-[#f0d4a0] hover:bg-[#2a2622]">
-          <Link href="/student/claim">
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Привязать диплом
-          </Link>
-        </Button>
+        <Link href="/student/claim" className={buttonVariants({ variant: "default" }) + " bg-[#1c1917] text-[#f0d4a0] hover:bg-[#2a2622]"}>
+          <PlusCircle className="h-4 w-4" />
+          Привязать диплом
+        </Link>
       </div>
 
       {diplomas.length > 0 && (
@@ -63,9 +61,9 @@ export default async function StudentPage() {
           <p className="text-stone-400 text-sm mt-1 mb-6">
             Привяжите диплом, выданный вашим учебным заведением
           </p>
-          <Button asChild variant="outline">
-            <Link href="/student/claim">Привязать диплом</Link>
-          </Button>
+          <Link href="/student/claim" className={buttonVariants({ variant: "outline" })}>
+            Привязать диплом
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

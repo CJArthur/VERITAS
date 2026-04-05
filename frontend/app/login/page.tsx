@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -9,27 +10,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function LoginPage() {
-  const router = useRouter();
+type Notice = { type: "success" | "warning" | "error"; text: string };
+
+function VerificationNotice({ onNotice }: { onNotice: (n: Notice | null) => void }) {
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<{ type: "success" | "warning" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     const verified = searchParams.get("verified");
     const pending = searchParams.get("pending");
     if (verified === "ok" && pending === "1") {
-      setNotice({ type: "warning", text: "Email подтверждён. Войти вы сможете после того, как администратор VERITAS одобрит заявку вашего учебного заведения." });
+      onNotice({ type: "warning", text: "Email подтверждён. Войти вы сможете после того, как администратор VERITAS одобрит заявку вашего учебного заведения." });
     } else if (verified === "expired") {
-      setNotice({ type: "error", text: "Ссылка для подтверждения устарела или уже использована. Зарегистрируйтесь повторно." });
+      onNotice({ type: "error", text: "Ссылка для подтверждения устарела или уже использована. Зарегистрируйтесь повторно." });
     } else if (verified === "not_found") {
-      setNotice({ type: "error", text: "Пользователь не найден. Попробуйте зарегистрироваться заново." });
+      onNotice({ type: "error", text: "Пользователь не найден. Попробуйте зарегистрироваться заново." });
     }
-  }, [searchParams]);
+  }, [searchParams, onNotice]);
+
+  return null;
+}
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,8 +77,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#faf9f7] flex">
+      <Suspense fallback={null}>
+        <VerificationNotice onNotice={setNotice} />
+      </Suspense>
+
       {/* Left — dark brand panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1c1917] flex-col items-center justify-center p-12">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1c1917] flex-col items-center justify-center p-12 relative">
         <Link href="/" className="absolute top-6 left-6 flex items-center gap-1.5 text-stone-500 hover:text-[#f0d4a0] text-xs transition-colors group">
           <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
           На главную

@@ -96,7 +96,7 @@ async def yandex_callback(code: str, db: Session = Depends(get_db)):
     redis_client.set(
         f"refresh_token:{refresh_token}",
         str(user.id),
-        ex=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS).total_seconds(),
+        ex=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
     )
     add_refresh_token_to_user_set(str(user.id), refresh_token)
 

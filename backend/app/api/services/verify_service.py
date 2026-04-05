@@ -38,7 +38,7 @@ def verify_user_email(response: Response, token: str, db: Session):
     redis_client.set(
         f"refresh_token:{refresh_token}", 
         str(db_user.id), 
-        ex=timedelta(days = REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()
+        ex=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     )
     # Добавляем токен в SET пользователя
     add_refresh_token_to_user_set(str(db_user.id), refresh_token)

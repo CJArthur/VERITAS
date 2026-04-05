@@ -49,7 +49,7 @@ def make_update_refresh_token(request: Request, response: Response, db: Session)
     redis_client.set(
         f"refresh_token:{new_refresh_token}",
         user_id_str,
-        ex=timedelta(days = REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()
+        ex=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     )
     # Добавляем новый токен в SET пользователя
     add_refresh_token_to_user_set(user_id_str, new_refresh_token)

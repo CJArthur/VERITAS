@@ -150,7 +150,7 @@ def reset_password(user_data: VerifyPass, response: Response, token: str, db: Se
     redis_client.set(
         f"refresh_token:{new_refresh_token}",
         str(user.id),
-        ex=timedelta(days = REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()
+        ex=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     )
     logger.info("Redis save tokens")
     

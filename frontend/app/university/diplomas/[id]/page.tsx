@@ -10,7 +10,7 @@ import { CopyButton } from "@/components/CopyButton";
 export const dynamic = "force-dynamic";
 
 export default async function DiplomaDetailPage({ params }: { params: { id: string } }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
   if (!token) redirect("/login");
 

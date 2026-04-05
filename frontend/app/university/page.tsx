@@ -7,7 +7,7 @@ import { DiplomaTable } from "@/components/DiplomaTable";
 export const dynamic = "force-dynamic";
 
 export default async function UniversityPage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
   if (!token) redirect("/login");
 

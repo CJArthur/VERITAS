@@ -4,7 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { apiGet, UserMe } from "@/lib/api";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
   if (!token) redirect("/login");
 

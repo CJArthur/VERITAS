@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 export const dynamic = "force-dynamic";
 
 export default async function StudentPage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
   if (!token) redirect("/login");
 

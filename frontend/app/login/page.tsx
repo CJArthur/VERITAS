@@ -51,19 +51,15 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+      const body = await loginRes.json().catch(() => ({}));
       if (!loginRes.ok) {
-        const body = await loginRes.json().catch(() => ({}));
         throw new ApiError(loginRes.status, body.detail || "Ошибка входа");
       }
-      const meRes = await fetch(`${apiUrl}/api/v1/me`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-      const user = await meRes.json();
-      if (user.role === "student") router.push("/student");
-      else if (user.role === "university_staff") router.push("/university");
-      else if (user.role === "super_admin") router.push("/admin");
-      else router.push("/");
+      const role: string = body.role ?? "";
+      if (role === "student") router.push("/student");
+      else if (role === "university_staff") router.push("/university");
+      else if (role === "super_admin") router.push("/admin");
+      else throw new ApiError(200, `Неизвестная роль: ${role}`);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.status === 401 ? "Неверный email или пароль" : err.detail);

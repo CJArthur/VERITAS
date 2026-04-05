@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ShieldCheck, ShieldX, CheckCircle2, XCircle, AlertTriangle, Building2, Eye, Shield, ArrowLeft, User, GraduationCap, Award } from "lucide-react";
+import { ShieldCheck, ShieldX, CheckCircle2, XCircle, AlertTriangle, Eye, Shield, ArrowLeft, User, GraduationCap, Award } from "lucide-react";
 import { PublicDiplomaView, DOCUMENT_TYPE_LABEL } from "@/lib/api";
 
 interface VerifyResultProps {

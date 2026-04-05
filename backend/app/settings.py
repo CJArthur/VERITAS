@@ -54,10 +54,9 @@ class Settings(BaseSettings):
     FORGOT_PASSWORD_URL_EXPIRY_SECONDS: int = 1800 # code active 30 min
 
     #False - dev(http), True - prod(https)
-    SECURE_COOKIES: bool = False
-    BASE_VERIFICATION_URL: str = "http://localhost:8000/api/v1/verify"
-    FRONTEND_URL: str = "http://localhost:3000"  # placeholder
-
+    SECURE_COOKIES: bool
+    BASE_VERIFICATION_URL: str
+    FRONTEND_URL: str
     # URL for drop password by email
     FORGOT_PASSWORD_FRONTEND_URL: str = "http://localhost:8000/api/v1/reset-pass"
 
@@ -68,11 +67,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # --- For proxy --- #
-    PROJECTS_SERVICE_URL: str = "http://localhost:8001" # Example
-
     # --- Domen`s with access --- #
-    ALLOWED_ORIGINS: str = "http://localhost:3000,https://our-frontend.com"
+    ALLOWED_ORIGINS: str
 
 
 

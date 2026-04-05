@@ -165,7 +165,7 @@ export default function UniversityAnalyticsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#1c1917]">Аналитика</h1>
         <p className="text-stone-500 text-sm mt-1">
-          Акти��ность проверки дипломов вашего учебного заведения
+          Активность проверки дипломов вашего учебного заведения
         </p>
       </div>
 

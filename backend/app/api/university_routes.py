@@ -83,9 +83,11 @@ def add_diploma_manual(
         db,
         university=uni,
         graduate_full_name=body.graduate_full_name,
+        birth_year=body.birth_year,
         year=body.year,
         specialty_name=body.specialty_name,
         diploma_number=body.diploma_number,
+        qualification=body.qualification,
         document_type=body.document_type,
         issuer_name=body.issuer_name,
     )

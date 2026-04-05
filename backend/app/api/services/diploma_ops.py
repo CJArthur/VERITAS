@@ -27,15 +27,17 @@ def create_diploma_minimal(
     *,
     university: University,
     graduate_full_name: str,
+    birth_year: int,
     year: int,
     specialty_name: str,
     diploma_number: str,
+    qualification: str = "bachelor",
     document_type: str = "diploma",
     issuer_name: str | None = None,
 ) -> Diploma:
     """Создаёт запись диплома из минимального набора полей (импорт CSV / ручной ввод)."""
     issue_date = date(year, 6, 30)
-    birth_placeholder = date(1900, 1, 1)
+    birth_date = date(birth_year, 1, 1)
     start_year = max(1900, year - 4)
 
     data_hash = compute_data_hash(
@@ -53,10 +55,10 @@ def create_diploma_minimal(
         registration_number=diploma_number,
         issue_date=issue_date,
         graduate_full_name=graduate_full_name.strip(),
-        graduate_birth_date=birth_placeholder,
+        graduate_birth_date=birth_date,
         specialty_code="00.00.00",
         specialty_name=specialty_name.strip(),
-        qualification=QualificationType.bachelor,
+        qualification=QualificationType(qualification) if qualification in QualificationType._value2member_map_ else QualificationType.bachelor,
         study_form=StudyForm.full_time,
         study_start_year=start_year,
         study_end_year=year,

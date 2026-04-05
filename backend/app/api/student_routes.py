@@ -124,6 +124,17 @@ def claim_diploma(
             status_code=status.HTTP_409_CONFLICT,
             detail="Диплом уже привязан к другому аккаунту",
         )
+    # Проверяем год рождения если указан и диплом не содержит placeholder-дату
+    if (
+        body.birth_year is not None
+        and dip.graduate_birth_date is not None
+        and dip.graduate_birth_date.year != 1900
+        and dip.graduate_birth_date.year != body.birth_year
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Диплом не найден или неверные данные",
+        )
     dip.student_user_id = user.id
     db.commit()
     return {"status": "claimed", "diploma_id": str(dip.id)}

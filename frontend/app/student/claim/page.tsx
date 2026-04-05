@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 
 export default function ClaimDiplomaPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ registration_number: "", graduate_full_name: "" });
+  const [form, setForm] = useState({ registration_number: "", graduate_full_name: "", birth_year: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -28,6 +28,7 @@ export default function ClaimDiplomaPage() {
         body: JSON.stringify({
           registration_number: form.registration_number.trim(),
           graduate_full_name: form.graduate_full_name.trim(),
+          birth_year: form.birth_year ? Number(form.birth_year) : null,
         }),
       });
       if (!res.ok) {
@@ -85,6 +86,19 @@ export default function ClaimDiplomaPage() {
                 onChange={(e) => setForm((p) => ({ ...p, graduate_full_name: e.target.value }))}
                 required
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[#1c1917] font-medium text-sm">Год рождения</Label>
+              <Input
+                type="number"
+                placeholder="1999"
+                min={1900}
+                max={2010}
+                value={form.birth_year}
+                onChange={(e) => setForm((p) => ({ ...p, birth_year: e.target.value }))}
+                required
+              />
+              <p className="text-xs text-stone-400">Для подтверждения вашей личности</p>
             </div>
 
             {error && (

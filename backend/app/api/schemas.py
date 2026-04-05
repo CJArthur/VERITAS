@@ -122,6 +122,7 @@ class RejectUniversityBody(BaseModel):
 class ClaimDiplomaBody(BaseModel):
     registration_number: str
     graduate_full_name: str
+    birth_year: Optional[int] = None   # если указан — проверяется; None = мягкий режим для старых записей
 
 
 class ShareLinkBody(BaseModel):
@@ -135,11 +136,13 @@ class ShareLinkBody(BaseModel):
 
 class ManualDiplomaIn(BaseModel):
     graduate_full_name: str
-    year: int
+    birth_year: int                   # год рождения выпускника — используется при привязке диплома студентом
+    year: int                         # год окончания
     specialty_name: str
     diploma_number: str
-    document_type: str = "diploma"   # diploma | certificate | professional_license
-    issuer_name: Optional[str] = None  # заполняется для сертификатов (Coursera, Skillbox…)
+    qualification: str = "bachelor"   # bachelor | master | specialist | phd
+    document_type: str = "diploma"    # diploma | certificate | professional_license
+    issuer_name: Optional[str] = None # заполняется для сертификатов (Coursera, Skillbox…)
 
 
 class PublicDiplomaView(BaseModel):

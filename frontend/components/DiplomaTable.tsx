@@ -15,21 +15,32 @@ interface DiplomaTableProps {
 
 interface AddForm {
   graduate_full_name: string;
+  birth_year: number;
   year: number;
   specialty_name: string;
   diploma_number: string;
+  qualification: string;
   document_type: string;
   issuer_name: string;
 }
 
 const defaultForm = (): AddForm => ({
   graduate_full_name: "",
+  birth_year: 2000,
   year: new Date().getFullYear(),
   specialty_name: "",
   diploma_number: "",
+  qualification: "bachelor",
   document_type: "diploma",
   issuer_name: "",
 });
+
+const QUALIFICATION_LABEL: Record<string, string> = {
+  bachelor:   "Бакалавр",
+  master:     "Магистр",
+  specialist: "Специалист",
+  phd:        "Кандидат наук / Аспирант",
+};
 
 // Ключ инвалидации — prefix matching покрывает все варианты запроса
 const DIPLOMAS_QUERY_KEY = ["university-diplomas"] as const;
@@ -156,25 +167,44 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
           onSubmit={(e) => { e.preventDefault(); addMutation.mutate(addForm); }}
           className="mb-6 bg-white border border-stone-200 rounded-xl p-5 grid grid-cols-1 sm:grid-cols-2 gap-4"
         >
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-[#1c1917]">ФИО</label>
+          <div className="space-y-1 col-span-full">
+            <label className="text-xs font-medium text-[#1c1917]">ФИО выпускника</label>
             <Input placeholder="Иванов Иван Иванович" value={addForm.graduate_full_name}
               onChange={(e) => setAddForm((p) => ({ ...p, graduate_full_name: e.target.value }))} required />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-[#1c1917]">Специальность</label>
-            <Input placeholder="Информатика и вычислительная техника" value={addForm.specialty_name}
-              onChange={(e) => setAddForm((p) => ({ ...p, specialty_name: e.target.value }))} required />
+            <label className="text-xs font-medium text-[#1c1917]">Год рождения</label>
+            <Input type="number" min={1900} max={2010} placeholder="1999"
+              value={addForm.birth_year}
+              onChange={(e) => setAddForm((p) => ({ ...p, birth_year: Number(e.target.value) }))} required />
+            <p className="text-[10px] text-stone-400">Используется студентом для привязки диплома</p>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-[#1c1917]">Год окончания</label>
             <Input type="number" min={1950} max={2100} value={addForm.year}
               onChange={(e) => setAddForm((p) => ({ ...p, year: Number(e.target.value) }))} required />
           </div>
+          <div className="space-y-1 col-span-full">
+            <label className="text-xs font-medium text-[#1c1917]">Специальность</label>
+            <Input placeholder="Информатика и вычислительная техника" value={addForm.specialty_name}
+              onChange={(e) => setAddForm((p) => ({ ...p, specialty_name: e.target.value }))} required />
+          </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-[#1c1917]">Номер документа</label>
             <Input placeholder="107704 1234567" value={addForm.diploma_number}
               onChange={(e) => setAddForm((p) => ({ ...p, diploma_number: e.target.value }))} required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-[#1c1917]">Квалификация</label>
+            <select
+              value={addForm.qualification}
+              onChange={(e) => setAddForm((p) => ({ ...p, qualification: e.target.value }))}
+              className="w-full h-9 rounded-md border border-stone-200 bg-white px-3 text-sm text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-stone-400"
+            >
+              {(Object.entries(QUALIFICATION_LABEL) as [string, string][]).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-[#1c1917]">Тип документа</label>

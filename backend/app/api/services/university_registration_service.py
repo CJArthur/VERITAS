@@ -10,6 +10,7 @@ from app.db.models import University, User, UserRole, UniversityApprovalStatus
 from app.db.redis_setup import redis_client
 from app.utils.config import BASE_VERIFICATION_URL, VERIFICATION_URL_EXPIRY_SECONDS
 from app.utils.security import generate_verification_token, hash_password
+from app.settings import SETTINGS
 
 
 def register_university_account(
@@ -67,13 +68,19 @@ def register_university_account(
     db.commit()
     db.refresh(user)
 
-    verification_token = generate_verification_token()
-    redis_client.set(
-        f"verification:{verification_token}",
-        str(user.id),
-        ex=VERIFICATION_URL_EXPIRY_SECONDS,
-    )
-    verification_link = f"{BASE_VERIFICATION_URL}?token={verification_token}"
-    background_tasks.add_task(send_verification_email, user.email, verification_link)
+    if SETTINGS.SKIP_EMAIL_VERIFICATION:
+        # Режим без SMTP: верифицируем сразу, письмо не отправляем
+        user.is_verified = True
+        db.commit()
+        db.refresh(user)
+    else:
+        verification_token = generate_verification_token()
+        redis_client.set(
+            f"verification:{verification_token}",
+            str(user.id),
+            ex=VERIFICATION_URL_EXPIRY_SECONDS,
+        )
+        verification_link = f"{BASE_VERIFICATION_URL}?token={verification_token}"
+        background_tasks.add_task(send_verification_email, user.email, verification_link)
 
     return user

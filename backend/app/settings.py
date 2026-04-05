@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     # --- Domen`s with access --- #
     ALLOWED_ORIGINS: str
 
+    # --- Email verification mode --- #
+    # True  = пользователь верифицируется сразу при регистрации (Railway / окружения без SMTP)
+    # False = стандартный флоу: письмо → ссылка → подтверждение
+    SKIP_EMAIL_VERIFICATION: bool = False
+
 
 
 SETTINGS = Settings()

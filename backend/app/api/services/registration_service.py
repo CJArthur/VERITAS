@@ -11,6 +11,7 @@ from app.utils.config import (
     BASE_VERIFICATION_URL,
     BOOTSTRAP_SUPER_ADMIN_EMAIL,
 )
+from app.settings import SETTINGS
 
 def registr_user(user_login: str, user_email: str, user_password: str,
                  background_tasks: BackgroundTasks, db: Session):
@@ -72,18 +73,20 @@ def registr_user(user_login: str, user_email: str, user_password: str,
         db.commit()
         db.refresh(user)
 
-    # 4. Общая логика отправки верификации
-    verification_token = generate_verification_token()
-    
-    redis_client.set(
-        f"verification:{verification_token}",
-        str(user.id),
-        ex=VERIFICATION_URL_EXPIRY_SECONDS
-    )
-
-    verification_link = f"{BASE_VERIFICATION_URL}?token={verification_token}"
-    
-    # 5. Отправка Email
-    background_tasks.add_task(send_verification_email, user.email, verification_link)
+    # 4. Верификация email
+    if SETTINGS.SKIP_EMAIL_VERIFICATION:
+        # Режим без SMTP: верифицируем сразу, письмо не отправляем
+        user.is_verified = True
+        db.commit()
+        db.refresh(user)
+    else:
+        verification_token = generate_verification_token()
+        redis_client.set(
+            f"verification:{verification_token}",
+            str(user.id),
+            ex=VERIFICATION_URL_EXPIRY_SECONDS,
+        )
+        verification_link = f"{BASE_VERIFICATION_URL}?token={verification_token}"
+        background_tasks.add_task(send_verification_email, user.email, verification_link)
 
     return user

@@ -56,6 +56,11 @@ class VerifyPass(BaseModel):
     confirm_new_pass: str = Field(min_length=8, max_length=128)
 
 
+# --- Admin actions --- #
+class RejectIssuerBody(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
+
+
 # --- Log in/Access --- #
 class UserLogin(BaseModel):
     email: EmailStr
@@ -111,8 +116,7 @@ class IssuerRegister(BaseModel):
 UniversityRegister = IssuerRegister
 
 
-class RejectUniversityBody(BaseModel):
-    reason: str = Field(min_length=1, max_length=2000)
+RejectUniversityBody = RejectIssuerBody  # backward-compat alias
 
 
 class ClaimDiplomaBody(BaseModel):

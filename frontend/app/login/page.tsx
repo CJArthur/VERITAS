@@ -167,7 +167,7 @@ export default function LoginPage() {
             </Button>
 
             <p className="text-center text-xs text-stone-400">
-              <Link href="/register/university" className="hover:text-[#a05c20]">
+              <Link href="/register/issuer" className="hover:text-[#a05c20]">
                 Зарегистрировать учебное заведение
               </Link>
             </p>

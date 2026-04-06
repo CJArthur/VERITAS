@@ -93,7 +93,7 @@ export default async function IssuerPage() {
         ))}
       </div>
 
-      <DiplomaTable initial={diplomas} />
+      <DiplomaTable initial={diplomas} issuerType={profile?.issuer_type} />
     </div>
   );
 }

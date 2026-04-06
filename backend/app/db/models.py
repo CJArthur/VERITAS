@@ -46,10 +46,13 @@ class IssuerType(str, enum.Enum):
 
 
 class QualificationType(enum.Enum):
-    bachelor  = "bachelor"
-    master    = "master"
+    bachelor   = "bachelor"
+    master     = "master"
     specialist = "specialist"
-    phd       = "phd"
+    phd        = "phd"
+    # Non-diploma document types don't have a qualification level
+    certificate          = "certificate"
+    professional_license = "professional_license"
 
 
 class StudyForm(enum.Enum):
@@ -162,12 +165,15 @@ class Diploma(Base):
     specialty_code: Mapped[str] = mapped_column(String)
     specialty_name: Mapped[str] = mapped_column(Text)
 
-    qualification: Mapped[QualificationType] = mapped_column(Enum(QualificationType))
+    qualification: Mapped[Optional[QualificationType]] = mapped_column(
+        Enum(QualificationType, values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
     study_form: Mapped[StudyForm] = mapped_column(Enum(StudyForm))
 
     study_start_year: Mapped[int] = mapped_column(Integer)
     study_end_year: Mapped[int] = mapped_column(Integer)
-    gpa: Mapped[float] = mapped_column(Numeric(3, 2))
+    gpa: Mapped[Optional[float]] = mapped_column(Numeric(3, 2), nullable=True)
 
     data_hash: Mapped[str] = mapped_column(String(64))
     transcript_hash: Mapped[str] = mapped_column(String(64))

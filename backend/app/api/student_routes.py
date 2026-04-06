@@ -124,12 +124,12 @@ def claim_diploma(
             status_code=status.HTTP_409_CONFLICT,
             detail="Диплом уже привязан к другому аккаунту",
         )
-    # Проверяем год рождения если указан и диплом не содержит placeholder-дату
+    # Проверяем полную дату рождения если указана и диплом не содержит placeholder-дату
     if (
-        body.birth_year is not None
+        body.birth_date is not None
         and dip.graduate_birth_date is not None
         and dip.graduate_birth_date.year != 1900
-        and dip.graduate_birth_date.year != body.birth_year
+        and dip.graduate_birth_date != body.birth_date
     ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

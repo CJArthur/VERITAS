@@ -54,8 +54,8 @@ def create_diploma_minimal(
     specialty_name: str,
     specialty_code: str,
     diploma_number: str,
-    gpa: float,
-    qualification: str = "bachelor",
+    gpa: float | None,
+    qualification: str | None = None,
     document_type: str = "diploma",
     issuer_name: str | None = None,
     issue_date: date | None = None,
@@ -74,7 +74,8 @@ def create_diploma_minimal(
         )
 
     resolved_issue_date = issue_date or date(study_end_year, 6, 30)
-    duration = STUDY_DURATION.get(qualification, 4)
+    resolved_qualification = qualification or ("bachelor" if document_type == "diploma" else None)
+    duration = STUDY_DURATION.get(resolved_qualification or "", 1)
     start_year = max(1900, study_end_year - duration)
 
     data_hash = compute_data_hash(
@@ -95,13 +96,13 @@ def create_diploma_minimal(
         graduate_birth_date=birth_date,
         specialty_code=(specialty_code or "").strip() or "00.00.00",
         specialty_name=specialty_name.strip(),
-        qualification=QualificationType(qualification)
-            if qualification in QualificationType._value2member_map_
-            else QualificationType.bachelor,
+        qualification=QualificationType(resolved_qualification)
+            if resolved_qualification in QualificationType._value2member_map_
+            else None,
         study_form=StudyForm.full_time,
         study_start_year=start_year,
         study_end_year=study_end_year,
-        gpa=round(float(gpa), 2),
+        gpa=round(float(gpa), 2) if gpa is not None else None,
         data_hash=data_hash,
         transcript_hash=_empty_transcript_hash(),
         certificate_token=uuid4(),

@@ -122,7 +122,7 @@ RejectUniversityBody = RejectIssuerBody  # backward-compat alias
 class ClaimDiplomaBody(BaseModel):
     registration_number: str
     graduate_full_name: str
-    birth_year: Optional[int] = None
+    birth_date: Optional[date] = None   # full date for precise identity check; was birth_year
 
 
 class ShareLinkBody(BaseModel):
@@ -149,10 +149,12 @@ class ManualDiplomaIn(BaseModel):
     specialty_name: str
     specialty_code: Optional[str] = None               # ОКСО format XX.XX.XX; required for diploma
     diploma_number: str
-    qualification: str = "bachelor"
+    # qualification: only meaningful for diploma/professional_license; ignored for bare certificate
+    qualification: Optional[str] = None
     document_type: str = "diploma"
     issuer_name: Optional[str] = None                  # brand name if different from registered issuer
-    gpa: float = Field(ge=0.0, le=5.0)                 # required — forces conscious entry
+    # gpa: required for diploma/professional_license; optional for certificate
+    gpa: Optional[float] = Field(default=None, ge=0.0, le=5.0)
 
     @field_validator("specialty_code")
     @classmethod
@@ -163,6 +165,22 @@ class ManualDiplomaIn(BaseModel):
                 raise ValueError("specialty_code is required for diplomas (ОКСО format XX.XX.XX)")
             if not _OCSО_RE.match(v):
                 raise ValueError("specialty_code must match XX.XX.XX (ОКСО format)")
+        return v
+
+    @field_validator("gpa")
+    @classmethod
+    def gpa_required_for_diploma(cls, v: Optional[float], info) -> Optional[float]:
+        doc_type = info.data.get("document_type", "diploma")
+        if doc_type in ("diploma", "professional_license") and v is None:
+            raise ValueError("gpa is required for diploma and professional_license documents")
+        return v
+
+    @field_validator("qualification")
+    @classmethod
+    def qualification_default(cls, v: Optional[str], info) -> Optional[str]:
+        doc_type = info.data.get("document_type", "diploma")
+        if doc_type == "diploma" and not v:
+            return "bachelor"
         return v
 
 

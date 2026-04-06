@@ -7,10 +7,19 @@ import { Search, Upload, PlusCircle, ChevronRight, AlertTriangle, RefreshCw } fr
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
-import { DiplomaListItem, ApiError, apiGet, apiPost, apiPostForm, DOCUMENT_TYPE_LABEL } from "@/lib/api";
+import { DiplomaListItem, ApiError, apiGet, apiPost, apiPostForm, DOCUMENT_TYPE_LABEL, IssuerType } from "@/lib/api";
+
+// Which document types each issuer type may issue
+const ALLOWED_DOC_TYPES: Record<IssuerType, string[]> = {
+  university:          ["diploma", "certificate", "professional_license"],
+  training_center:     ["certificate", "professional_license"],
+  corporate:           ["certificate"],
+  certification_body:  ["certificate", "professional_license"],
+};
 
 interface DiplomaTableProps {
   initial: DiplomaListItem[];
+  issuerType?: IssuerType;
 }
 
 interface AddForm {
@@ -23,21 +32,21 @@ interface AddForm {
   qualification: string;
   document_type: string;
   issuer_name: string;
-  gpa: number;
+  gpa: string;
   issue_date: string;
 }
 
-const defaultForm = (): AddForm => ({
+const defaultForm = (docType = "diploma"): AddForm => ({
   graduate_full_name: "",
   birth_date: "2000-01-01",
   study_end_year: new Date().getFullYear(),
   specialty_name: "",
   specialty_code: "",
   diploma_number: "",
-  qualification: "bachelor",
-  document_type: "diploma",
+  qualification: docType === "diploma" ? "bachelor" : "",
+  document_type: docType,
   issuer_name: "",
-  gpa: 0,
+  gpa: "",
   issue_date: "",
 });
 
@@ -51,14 +60,18 @@ const QUALIFICATION_LABEL: Record<string, string> = {
 // Ключ инвалидации — prefix matching покрывает все варианты запроса
 const DIPLOMAS_QUERY_KEY = ["university-diplomas"] as const;
 
-export function DiplomaTable({ initial }: DiplomaTableProps) {
+export function DiplomaTable({ initial, issuerType = "university" }: DiplomaTableProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState<AddForm>(defaultForm());
+  const allowedDocTypes = ALLOWED_DOC_TYPES[issuerType] ?? ["diploma"];
+  const [addForm, setAddForm] = useState<AddForm>(defaultForm(allowedDocTypes[0]));
+
+  const needsGpa = addForm.document_type !== "certificate";
+  const needsQualification = addForm.document_type === "diploma";
   const [csvResult, setCsvResult] = useState<{ created: number; errors: string[] } | null>(null);
 
   // Debounce поиска — не спамим API при каждом символе
@@ -83,16 +96,17 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
 
   const addMutation = useMutation({
     mutationFn: (form: AddForm) => {
+      const docType = form.document_type;
       const body: Record<string, unknown> = {
         graduate_full_name: form.graduate_full_name,
         birth_date: form.birth_date,
         study_end_year: form.study_end_year,
         specialty_name: form.specialty_name,
         diploma_number: form.diploma_number,
-        qualification: form.qualification,
-        document_type: form.document_type,
-        gpa: form.gpa,
+        document_type: docType,
       };
+      if (docType !== "certificate" && form.gpa !== "") body.gpa = Number(form.gpa);
+      if (docType === "diploma" && form.qualification) body.qualification = form.qualification;
       if (form.issue_date) body.issue_date = form.issue_date;
       if (form.specialty_code) body.specialty_code = form.specialty_code;
       if (form.issuer_name) body.issuer_name = form.issuer_name;
@@ -100,7 +114,7 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
     },
     onSuccess: () => {
       setAddOpen(false);
-      setAddForm(defaultForm());
+      setAddForm(defaultForm(allowedDocTypes[0]));
       queryClient.invalidateQueries({ queryKey: DIPLOMAS_QUERY_KEY });
     },
   });
@@ -203,12 +217,14 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
             <Input type="number" min={1950} max={2100} value={addForm.study_end_year}
               onChange={(e) => setAddForm((p) => ({ ...p, study_end_year: Number(e.target.value) }))} required />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-[#1c1917]">Средний балл (ГПА)</label>
-            <Input type="number" min={0} max={5} step={0.1} placeholder="4.5"
-              value={addForm.gpa || ""}
-              onChange={(e) => setAddForm((p) => ({ ...p, gpa: Number(e.target.value) }))} required />
-          </div>
+          {needsGpa && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[#1c1917]">Средний балл (ГПА)</label>
+              <Input type="number" min={0} max={5} step={0.01} placeholder="4.5"
+                value={addForm.gpa}
+                onChange={(e) => setAddForm((p) => ({ ...p, gpa: e.target.value }))} required />
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium text-[#1c1917]">Дата выдачи</label>
             <Input type="date" value={addForm.issue_date}
@@ -238,27 +254,37 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
             <Input placeholder="107704 1234567" value={addForm.diploma_number}
               onChange={(e) => setAddForm((p) => ({ ...p, diploma_number: e.target.value }))} required />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-[#1c1917]">Квалификация</label>
-            <select
-              value={addForm.qualification}
-              onChange={(e) => setAddForm((p) => ({ ...p, qualification: e.target.value }))}
-              className="w-full h-9 rounded-md border border-stone-200 bg-white px-3 text-sm text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-stone-400"
-            >
-              {(Object.entries(QUALIFICATION_LABEL) as [string, string][]).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
-          </div>
+          {needsQualification && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[#1c1917]">Квалификация</label>
+              <select
+                value={addForm.qualification}
+                onChange={(e) => setAddForm((p) => ({ ...p, qualification: e.target.value }))}
+                className="w-full h-9 rounded-md border border-stone-200 bg-white px-3 text-sm text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-stone-400"
+              >
+                {(Object.entries(QUALIFICATION_LABEL) as [string, string][]).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium text-[#1c1917]">Тип документа</label>
             <select
               value={addForm.document_type}
-              onChange={(e) => setAddForm((p) => ({ ...p, document_type: e.target.value }))}
+              onChange={(e) => {
+                const dt = e.target.value;
+                setAddForm((p) => ({
+                  ...p,
+                  document_type: dt,
+                  qualification: dt === "diploma" ? "bachelor" : "",
+                  gpa: dt === "certificate" ? "" : p.gpa,
+                }));
+              }}
               className="w-full h-9 rounded-md border border-stone-200 bg-white px-3 text-sm text-[#1c1917] focus:outline-none focus:ring-2 focus:ring-stone-400"
             >
-              {(Object.entries(DOCUMENT_TYPE_LABEL) as [string, string][]).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
+              {allowedDocTypes.map((val) => (
+                <option key={val} value={val}>{DOCUMENT_TYPE_LABEL[val as keyof typeof DOCUMENT_TYPE_LABEL] ?? val}</option>
               ))}
             </select>
           </div>

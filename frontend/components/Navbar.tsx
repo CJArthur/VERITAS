@@ -19,9 +19,9 @@ const NAV_LINKS: Record<string, { label: string; href: string }[]> = {
     { label: "Профиль", href: "/student/profile" },
   ],
   university_staff: [
-    { label: "Дипломы", href: "/university" },
-    { label: "Аналитика", href: "/university/analytics" },
-    { label: "Профиль ВУЗа", href: "/university/profile" },
+    { label: "Дипломы", href: "/issuer" },
+    { label: "Аналитика", href: "/issuer/analytics" },
+    { label: "Профиль", href: "/issuer/profile" },
   ],
   super_admin: [{ label: "Управление платформой", href: "/admin" }],
 };
@@ -50,7 +50,7 @@ export function Navbar({ role, userName }: NavbarProps) {
     role === "student"
       ? "/student"
       : role === "university_staff"
-        ? "/university"
+        ? "/issuer"
         : role === "super_admin"
           ? "/admin"
           : "/";

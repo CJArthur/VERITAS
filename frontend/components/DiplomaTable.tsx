@@ -15,24 +15,30 @@ interface DiplomaTableProps {
 
 interface AddForm {
   graduate_full_name: string;
-  birth_year: number;
-  year: number;
+  birth_date: string;
+  study_end_year: number;
   specialty_name: string;
+  specialty_code: string;
   diploma_number: string;
   qualification: string;
   document_type: string;
   issuer_name: string;
+  gpa: number;
+  issue_date: string;
 }
 
 const defaultForm = (): AddForm => ({
   graduate_full_name: "",
-  birth_year: 2000,
-  year: new Date().getFullYear(),
+  birth_date: "2000-01-01",
+  study_end_year: new Date().getFullYear(),
   specialty_name: "",
+  specialty_code: "",
   diploma_number: "",
   qualification: "bachelor",
   document_type: "diploma",
   issuer_name: "",
+  gpa: 0,
+  issue_date: "",
 });
 
 const QUALIFICATION_LABEL: Record<string, string> = {
@@ -66,9 +72,9 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
     queryFn: () =>
       debouncedQuery.length >= 2
         ? apiGet<DiplomaListItem[]>(
-            `/api/v1/university/diplomas/search?q=${encodeURIComponent(debouncedQuery)}`
+            `/api/v1/issuer/diplomas/search?q=${encodeURIComponent(debouncedQuery)}`
           )
-        : apiGet<DiplomaListItem[]>("/api/v1/university/diplomas"),
+        : apiGet<DiplomaListItem[]>("/api/v1/issuer/diplomas"),
     // SSR-данные используем как начальное состояние при пустом поиске
     initialData: debouncedQuery ? undefined : initial,
     placeholderData: keepPreviousData, // список не мигает при смене запроса
@@ -76,8 +82,22 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (form: AddForm) =>
-      apiPost<DiplomaListItem>("/api/v1/university/diplomas/manual", form),
+    mutationFn: (form: AddForm) => {
+      const body: Record<string, unknown> = {
+        graduate_full_name: form.graduate_full_name,
+        birth_date: form.birth_date,
+        study_end_year: form.study_end_year,
+        specialty_name: form.specialty_name,
+        diploma_number: form.diploma_number,
+        qualification: form.qualification,
+        document_type: form.document_type,
+        gpa: form.gpa,
+      };
+      if (form.issue_date) body.issue_date = form.issue_date;
+      if (form.specialty_code) body.specialty_code = form.specialty_code;
+      if (form.issuer_name) body.issuer_name = form.issuer_name;
+      return apiPost<DiplomaListItem>("/api/v1/issuer/diplomas/manual", body);
+    },
     onSuccess: () => {
       setAddOpen(false);
       setAddForm(defaultForm());
@@ -90,7 +110,7 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
       const form = new FormData();
       form.append("file", file);
       return apiPostForm<{ created: number; errors: string[] }>(
-        "/api/v1/university/diplomas/bulk-upload",
+        "/api/v1/issuer/diplomas/bulk-upload",
         form
       );
     },
@@ -173,17 +193,41 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
               onChange={(e) => setAddForm((p) => ({ ...p, graduate_full_name: e.target.value }))} required />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-[#1c1917]">Год рождения</label>
-            <Input type="number" min={1900} max={2010} placeholder="1999"
-              value={addForm.birth_year}
-              onChange={(e) => setAddForm((p) => ({ ...p, birth_year: Number(e.target.value) }))} required />
+            <label className="text-xs font-medium text-[#1c1917]">Дата рождения</label>
+            <Input type="date" value={addForm.birth_date}
+              onChange={(e) => setAddForm((p) => ({ ...p, birth_date: e.target.value }))} required />
             <p className="text-[10px] text-stone-400">Используется студентом для привязки диплома</p>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-[#1c1917]">Год окончания</label>
-            <Input type="number" min={1950} max={2100} value={addForm.year}
-              onChange={(e) => setAddForm((p) => ({ ...p, year: Number(e.target.value) }))} required />
+            <Input type="number" min={1950} max={2100} value={addForm.study_end_year}
+              onChange={(e) => setAddForm((p) => ({ ...p, study_end_year: Number(e.target.value) }))} required />
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-[#1c1917]">Средний балл (ГПА)</label>
+            <Input type="number" min={0} max={5} step={0.1} placeholder="4.5"
+              value={addForm.gpa || ""}
+              onChange={(e) => setAddForm((p) => ({ ...p, gpa: Number(e.target.value) }))} required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-[#1c1917]">Дата выдачи</label>
+            <Input type="date" value={addForm.issue_date}
+              onChange={(e) => setAddForm((p) => ({ ...p, issue_date: e.target.value }))} />
+            <p className="text-[10px] text-stone-400">Не заполнено — автоматически 30 июня</p>
+          </div>
+          {addForm.document_type === "diploma" && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[#1c1917]">Код специальности (ОКСО)</label>
+              <Input
+                placeholder="09.03.01"
+                pattern="\d{2}\.\d{2}\.\d{2}"
+                title="Формат: ХХ.ХХ.ХХ (код ОКСО)"
+                value={addForm.specialty_code}
+                onChange={(e) => setAddForm((p) => ({ ...p, specialty_code: e.target.value }))}
+                required
+              />
+            </div>
+          )}
           <div className="space-y-1 col-span-full">
             <label className="text-xs font-medium text-[#1c1917]">Специальность</label>
             <Input placeholder="Информатика и вычислительная техника" value={addForm.specialty_name}
@@ -270,7 +314,7 @@ export function DiplomaTable({ initial }: DiplomaTableProps) {
                   <tr
                     key={d.id}
                     className="hover:bg-stone-50 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/university/diplomas/${d.id}`)}
+                    onClick={() => router.push(`/issuer/diplomas/${d.id}`)}
                   >
                     <td className="px-3 sm:px-4 py-3 font-medium text-[#1c1917]">
                       <div>{d.graduate_full_name}</div>

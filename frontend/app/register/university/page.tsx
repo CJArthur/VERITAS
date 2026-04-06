@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 export default function UniversityRegisterPage() {
   const [form, setForm] = useState({
     login: "", email: "", password: "", confirm: "",
-    university_name: "", ogrn: "", license_number: "", accreditation_number: "",
+    issuer_name: "", ogrn: "", license_number: "", accreditation_number: "",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -34,7 +34,7 @@ export default function UniversityRegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           login: form.login, email: form.email, password: form.password,
-          university_name: form.university_name, ogrn: form.ogrn,
+          issuer_name: form.issuer_name, ogrn: form.ogrn,
           license_number: form.license_number, accreditation_number: form.accreditation_number,
         }),
       });
@@ -101,7 +101,7 @@ export default function UniversityRegisterPage() {
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label className="text-sm font-medium text-[#1c1917]">Полное название</Label>
-                  <Input placeholder="ФГБОУ ВО «...»" value={form.university_name} onChange={set("university_name")} required />
+                  <Input placeholder="ФГБОУ ВО «...»" value={form.issuer_name} onChange={set("issuer_name")} required />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">

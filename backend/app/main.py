@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -8,7 +9,7 @@ from app.db.postgres import get_db
 from app.api.v1 import router as api_v1_router, edit_data_router
 from app.api.auth import router as validate_router
 from app.api.admin_routes import router as admin_router
-from app.api.university_routes import router as university_router
+from app.api.issuer_routes import router as issuer_router
 from app.api.student_routes import router as student_router
 from app.api.public_routes import router as public_router
 from app.api.employer_routes import router as employer_router
@@ -44,7 +45,7 @@ app.include_router(api_v1_router, prefix="/api/v1", tags=["Authentication"])
 app.include_router(edit_data_router, prefix="/api/v1", tags=["Edit user data"])
 app.include_router(validate_router, tags=["Validate token"])
 app.include_router(admin_router, prefix="/api/v1")
-app.include_router(university_router, prefix="/api/v1")
+app.include_router(issuer_router, prefix="/api/v1")
 app.include_router(student_router, prefix="/api/v1")
 app.include_router(public_router, prefix="/api/v1")
 app.include_router(employer_router, prefix="/api/v1")
@@ -69,6 +70,16 @@ async def root():
         "service": "veritas-backend",
         "status": "running",
     }
+
+
+# --- Legacy 308 redirect: /api/v1/university/* → /api/v1/issuer/* --- #
+@app.api_route(
+    "/api/v1/university/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    include_in_schema=False,
+)
+async def legacy_university_redirect(path: str):
+    return RedirectResponse(url=f"/api/v1/issuer/{path}", status_code=308)
 
 
 

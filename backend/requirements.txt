@@ -54,3 +54,4 @@ upstash-redis==1.7.0
 uvicorn==0.43.0
 watchfiles==1.1.1
 websockets==16.0
+web3>=6.0.0

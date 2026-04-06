@@ -137,8 +137,18 @@ export interface UserMe {
   email: string;
   is_verified: boolean;
   role: "student" | "university_staff" | "super_admin";
-  university_id: string | null;
+  issuer_id: string | null;
+  university_id: string | null; // backward-compat alias (same value)
 }
+
+export type IssuerType = "university" | "training_center" | "corporate" | "certification_body";
+
+export const ISSUER_TYPE_LABEL: Record<IssuerType, string> = {
+  university: "Университет",
+  training_center: "Учебный центр",
+  corporate: "Корпоративная академия",
+  certification_body: "Сертификационный центр",
+};
 
 export interface DiplomaListItem {
   id: string;
@@ -165,6 +175,9 @@ export interface DiplomaDetail extends DiplomaListItem {
   employer_link_valid_until: string | null;
   subjects: SubjectOut[];
   logs: VerificationLogOut[];
+  blockchain_status: "anchored" | "pending" | "not_configured" | "mismatch" | null;
+  blockchain_tx_hash: string | null;
+  blockchain_anchored_at: string | null;
 }
 
 export interface SubjectOut {
@@ -206,6 +219,10 @@ export interface PublicDiplomaView {
   share_recipient: string | null;
   document_type: DocumentType;
   issuer_name: string | null;
+  blockchain_status: "anchored" | "pending" | "not_configured" | "mismatch" | null;
+  blockchain_tx_hash: string | null;
+  blockchain_anchored_at: string | null;
+  blockchain_network: string;
 }
 
 export interface StudentDiploma {
@@ -226,16 +243,20 @@ export interface StudentDiploma {
   issuer_name: string | null;
 }
 
-export interface UniversityInfo {
+export interface IssuerInfo {
   id: string;
   name: string;
   ogrn: string;
   license_number: string;
-  accreditation_number: string;
+  accreditation_number: string | null;
+  issuer_type: IssuerType;
   avatar_url: string | null;
   banner_url: string | null;
   approval_status: string;
 }
+
+// Backward-compat alias
+export type UniversityInfo = IssuerInfo;
 
 export interface PendingUniversity {
   id: string;

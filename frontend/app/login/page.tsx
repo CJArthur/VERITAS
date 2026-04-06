@@ -57,7 +57,7 @@ export default function LoginPage() {
       }
       const role: string = body.role ?? "";
       if (role === "student") router.push("/student");
-      else if (role === "university_staff") router.push("/university");
+      else if (role === "university_staff") router.push("/issuer");
       else if (role === "super_admin") router.push("/admin");
       else throw new ApiError(200, `Неизвестная роль: ${role}`);
     } catch (err) {

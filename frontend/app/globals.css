@@ -4,8 +4,7 @@
 
 @layer base {
   :root {
-    --font-golos: "Golos Text", system-ui, sans-serif;
-    --font-mono: "JetBrains Mono", monospace;
+    /* --font-golos and --font-mono are injected by next/font — do NOT override here */
 
     --background: 40 33% 97%;
     --foreground: 20 14% 10%;
@@ -73,6 +72,47 @@
   }
 }
 
+/* ── Landing animations ─────────────────────────────────────────────── */
+@keyframes scan-y {
+  0%   { transform: translateY(-4px); opacity: 0; }
+  4%   { opacity: 1; }
+  92%  { opacity: 0.5; }
+  100% { transform: translateY(520px); opacity: 0; }
+}
+
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 0.65; }
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-7px); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.scan-line {
+  animation: scan-y 3.8s ease-in-out 1.2s infinite;
+}
+
+.glow-pulse {
+  animation: glow-breathe 2.8s ease-in-out infinite;
+}
+
+.float-card {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+.hero-dot-grid {
+  background-image: radial-gradient(circle, rgba(160, 92, 32, 0.22) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Components ─────────────────────────────────────────────────────── */
 @layer components {
   .verify-valid {
     background: linear-gradient(160deg, #14532d 0%, #166534 60%, #15803d 100%);

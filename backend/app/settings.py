@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     # Бесплатный тариф: 10 000 запросов/мес. Ключ: https://dadata.ru/profile/#info
     DADATA_API_KEY: str | None = None
 
+    # --- Blockchain (Sepolia testnet) — all optional ---
+    # If CONTRACT_ADDRESS is not set, blockchain anchoring is silently skipped.
+    # Setup guide: blockchain/README.md
+    SEPOLIA_RPC_URL: str | None = None
+    DEPLOYER_PRIVATE_KEY: str | None = None
+    CONTRACT_ADDRESS: str | None = None
 
 
 SETTINGS = Settings()

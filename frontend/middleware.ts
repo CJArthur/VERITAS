@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const ROLE_PATHS: Record<string, string[]> = {
   student: ["/student"],
-  university_staff: ["/university"],
+  university_staff: ["/issuer", "/university"],
   super_admin: ["/admin"],
 };
 
@@ -57,7 +57,7 @@ async function tryRefresh(
 
 function roleHomePath(role: string): string {
   if (role === "student") return "/student";
-  if (role === "university_staff") return "/university";
+  if (role === "university_staff") return "/issuer";
   if (role === "super_admin") return "/admin";
   return "/login";
 }
@@ -65,9 +65,17 @@ function roleHomePath(role: string): string {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Redirect legacy /university/* paths to /issuer/*
+  if (pathname.startsWith("/university/") || pathname === "/university") {
+    const newPath = pathname.replace(/^\/university/, "/issuer");
+    const url = request.nextUrl.clone();
+    url.pathname = newPath;
+    return NextResponse.redirect(url, { status: 308 });
+  }
+
   const isProtected =
     pathname.startsWith("/student") ||
-    pathname.startsWith("/university") ||
+    pathname.startsWith("/issuer") ||
     pathname.startsWith("/admin");
 
   if (!isProtected) return NextResponse.next();
@@ -125,5 +133,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/student/:path*", "/university/:path*", "/admin/:path*"],
+  matcher: ["/student/:path*", "/issuer/:path*", "/university/:path*", "/admin/:path*"],
 };

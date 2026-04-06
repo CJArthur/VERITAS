@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
-from app.api.schemas import RejectUniversityBody
+from app.api.schemas import RejectIssuerBody
 from app.api.services.org_verification import validate_ogrn_checksum, verify_organization
-from app.db.models import Diploma, EmployerApiKey, University, UniversityApprovalStatus, User, VerificationLog
+from app.db.models import Diploma, EmployerApiKey, Issuer, IssuerApprovalStatus, User, VerificationLog
 from app.db.postgres import get_db
 from app.settings import SETTINGS
 from app.utils.role_deps import require_super_admin
@@ -23,9 +23,9 @@ def list_pending_universities(
     _: User = Depends(require_super_admin),
 ):
     rows = (
-        db.query(University)
-        .filter(University.approval_status == UniversityApprovalStatus.pending)
-        .order_by(University.created_at.asc())
+        db.query(Issuer)
+        .filter(Issuer.approval_status == IssuerApprovalStatus.pending)
+        .order_by(Issuer.created_at.asc())
         .all()
     )
     return [
@@ -53,7 +53,7 @@ async def auto_verify_university(
     2. Поиск в ЕГРЮЛ через DaData (если настроен DADATA_API_KEY)
     3. Возвращает ссылки на Рособрнадзор для проверки лицензии и аккредитации.
     """
-    uni = db.query(University).filter(University.id == university_id).first()
+    uni = db.query(Issuer).filter(Issuer.id == university_id).first()
     if not uni:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
@@ -92,17 +92,17 @@ def approve_university(
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    uni = db.query(University).filter(University.id == university_id).first()
+    uni = db.query(Issuer).filter(Issuer.id == university_id).first()
     if not uni:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    if uni.approval_status != UniversityApprovalStatus.pending:
+    if uni.approval_status != IssuerApprovalStatus.pending:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not pending")
     if not validate_ogrn_checksum(uni.ogrn):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Невозможно одобрить: ОГРН не прошёл проверку контрольной суммы по алгоритму ФНС. Свяжитесь с организацией для уточнения данных.",
         )
-    uni.approval_status = UniversityApprovalStatus.approved
+    uni.approval_status = IssuerApprovalStatus.approved
     uni.rejection_reason = None
     db.commit()
     return {"status": "approved", "university_id": str(uni.id)}
@@ -111,14 +111,14 @@ def approve_university(
 @router.post("/universities/{university_id}/reject")
 def reject_university(
     university_id: UUID,
-    body: RejectUniversityBody,
+    body: RejectIssuerBody,
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    uni = db.query(University).filter(University.id == university_id).first()
+    uni = db.query(Issuer).filter(Issuer.id == university_id).first()
     if not uni:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    uni.approval_status = UniversityApprovalStatus.rejected
+    uni.approval_status = IssuerApprovalStatus.rejected
     uni.rejection_reason = body.reason
     db.commit()
     return {"status": "rejected", "university_id": str(uni.id)}
@@ -173,7 +173,7 @@ def list_all_universities(
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    rows = db.query(University).order_by(University.created_at.desc()).all()
+    rows = db.query(Issuer).order_by(Issuer.created_at.desc()).all()
     return [
         {
             "id": str(r.id),
@@ -196,10 +196,10 @@ def platform_stats(
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    total_unis = db.query(sqlfunc.count(University.id)).scalar() or 0
+    total_unis = db.query(sqlfunc.count(Issuer.id)).scalar() or 0
     approved_unis = (
-        db.query(sqlfunc.count(University.id))
-        .filter(University.approval_status == UniversityApprovalStatus.approved)
+        db.query(sqlfunc.count(Issuer.id))
+        .filter(Issuer.approval_status == IssuerApprovalStatus.approved)
         .scalar() or 0
     )
     total_diplomas = db.query(sqlfunc.count(Diploma.id)).scalar() or 0

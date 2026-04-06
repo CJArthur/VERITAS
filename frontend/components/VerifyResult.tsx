@@ -171,6 +171,47 @@ export function VerifyResult({ data, checkedAt }: VerifyResultProps) {
             </div>
           </div>
 
+          {data.blockchain_status && data.blockchain_status !== "not_configured" && (
+            <div className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-stone-500 text-sm font-medium">Блокчейн</span>
+              </div>
+              {data.blockchain_status === "anchored" && (
+                <div className="flex items-center gap-2 text-green-700">
+                  <span className="text-lg">✅</span>
+                  <div>
+                    <div className="font-medium text-sm">Anchored · Sepolia Testnet</div>
+                    {data.blockchain_anchored_at && (
+                      <div className="text-xs text-stone-500">
+                        {new Date(data.blockchain_anchored_at).toLocaleDateString("ru-RU")}
+                      </div>
+                    )}
+                    {data.blockchain_tx_hash && (
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${data.blockchain_tx_hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        Посмотреть в Etherscan →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+              {data.blockchain_status === "pending" && (
+                <div className="text-stone-500 text-sm">
+                  ⏳ Запись в блокчейн в процессе...
+                </div>
+              )}
+              {data.blockchain_status === "mismatch" && (
+                <div className="text-red-600 text-sm font-medium">
+                  ⚠️ Несоответствие блокчейн-записи
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-stone-400 pt-2">
             <span>Результат зафиксирован в иммутабельном журнале платформы</span>
             <span className="font-semibold text-[#a05c20] tracking-widest">VERITAS</span>

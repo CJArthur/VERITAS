@@ -6,8 +6,9 @@ from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.schemas import PublicDiplomaView
+from app.api.services.blockchain_service import blockchain_service
 from app.api.services.diploma_crypto import verify_issuer_signature
-from app.db.models import Diploma, DiplomaStatus, VerificationLog
+from app.db.models import Diploma, DiplomaStatus, Issuer, VerificationLog
 from app.db.postgres import get_db
 
 router = APIRouter(prefix="/public", tags=["Public verification"])
@@ -38,7 +39,7 @@ def public_view_diploma(
 ):
     d = (
         db.query(Diploma)
-        .options(joinedload(Diploma.university))
+        .options(joinedload(Diploma.issuer))
         .filter(Diploma.certificate_token == certificate_token)
         .first()
     )
@@ -71,7 +72,7 @@ def public_view_diploma(
 
     sig_ok = False
     if d.issuer_signature:
-        sig_ok = verify_issuer_signature(d.university_id, d.data_hash, d.issuer_signature)
+        sig_ok = verify_issuer_signature(d.issuer_id, d.data_hash, d.issuer_signature)
 
     log = VerificationLog(
         diploma_id=d.id,
@@ -94,8 +95,8 @@ def public_view_diploma(
         specialty_name=d.specialty_name,
         study_end_year=d.study_end_year,
         registration_number=d.registration_number,
-        university_name=d.university.name if d.university else "",
-        university_avatar_url=d.university.avatar_url if d.university else None,
+        university_name=d.issuer.name if d.issuer else "",
+        university_avatar_url=d.issuer.avatar_url if d.issuer else None,
         status=d.status.value,
         signature_valid=sig_ok,
         employer_link_valid_until=valid_until.isoformat(),
@@ -103,4 +104,11 @@ def public_view_diploma(
         share_recipient=d.share_recipient,
         document_type=d.document_type.value if d.document_type else "diploma",
         issuer_name=d.issuer_name,
+        blockchain_status=(
+            "anchored" if d.blockchain_tx_hash
+            else "pending" if blockchain_service.is_configured()
+            else "not_configured"
+        ),
+        blockchain_tx_hash=d.blockchain_tx_hash,
+        blockchain_anchored_at=d.blockchain_anchored_at.isoformat() if d.blockchain_anchored_at else None,
     )

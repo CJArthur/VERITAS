@@ -14,6 +14,7 @@ from app.api.schemas import (
     DeleteProf,
     UserResponse,
     UniversityRegister,
+    IssuerRegister,
 )
 from app.api.services.registration_service import registr_user
 from app.api.services.verify_service import verify_user_email
@@ -26,6 +27,7 @@ from app.api.services.reset_password_service import (reset_password_in_account,
 from app.api.services.logout_service import logout_user
 from app.api.services.delete_profile_service import delete_profile
 from app.api.services.university_registration_service import register_university_account
+from app.api.services.issuer_registration_service import register_issuer_account
 from app.utils.dependencies import get_current_user
 
 router = APIRouter()
@@ -61,7 +63,7 @@ def register_university(
         user_login=user_data.login,
         user_email=user_data.email,
         user_password=user_data.password,
-        university_name=user_data.university_name,
+        university_name=user_data.issuer_name,
         ogrn=user_data.ogrn,
         license_number=user_data.license_number,
         accreditation_number=user_data.accreditation_number,
@@ -70,6 +72,30 @@ def register_university(
     return {
         "message": "Application submitted. Verify your email. "
         "A super-admin must approve the university before staff can sign in.",
+    }
+
+
+@router.post("/register/issuer", status_code=status.HTTP_201_CREATED)
+def register_issuer(
+    user_data: IssuerRegister,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    register_issuer_account(
+        db=db,
+        user_login=user_data.login,
+        user_email=user_data.email,
+        user_password=user_data.password,
+        issuer_name=user_data.issuer_name,
+        ogrn=user_data.ogrn,
+        license_number=user_data.license_number,
+        accreditation_number=user_data.accreditation_number,
+        issuer_type=user_data.issuer_type,
+        background_tasks=background_tasks,
+    )
+    return {
+        "message": "Application submitted. Verify your email. "
+        "A super-admin must approve the issuer before staff can sign in.",
     }
 
 
